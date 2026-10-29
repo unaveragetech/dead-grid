@@ -1,5 +1,7 @@
 # APKs are uploaded to GitHub Releases, not committed (they are huge)
 *.apk
+# the website keeps one copy of the newest APK so its download buttons are plain links
+!docs/download/*.apk
 *.aab
 *.sha256
 *.ipa

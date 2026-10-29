@@ -21,7 +21,7 @@
       <h1>Dead Grid</h1>
       <p class="lead">The outbreak starts at the edge of your map, and the map is <b>your real neighbourhood</b>. Type any US address and its streets, buildings, hospitals and stores become the world you have to survive in. Fortify the building, keep your people alive, and get through the night.</p>
       <div class="btns">
-        <a class="btn primary" id="dl" href="install.html#download">Download for Android</a>
+        <a class="btn primary" id="dl" href="download/DeadGrid.apk" download>Download for Android</a>
         <a class="btn" href="#story">▶ Watch the trailer</a>
         <a class="btn" href="tips.html">Tips &amp; tricks</a>
       </div>
@@ -113,9 +113,9 @@
   S.releases().then(function (list) {
     var r = list[0], box = document.getElementById("latest");
     if (!r) { box.innerHTML = '<div class="md"><p>No release has been published yet.</p></div>'; return; }
-    document.getElementById("dl").href = r.download;
+    document.getElementById("dl").href = r.mirror || r.download;
     document.getElementById("dl").textContent = "Download v" + r.version + " (" + S.fmtSize(r.size) + ")";
-    box.innerHTML = '<header><h2>Version ' + S.esc(r.version) + '</h2><span class="meta">' + (r.date ? S.fmtDate(r.date) : "") + '</span></header><div class="md">' + S.md(r.notes) + '</div><div class="files"><a class="btn small primary" href="' + r.download + '">Download APK</a><a class="btn small" href="install.html">How to install</a><a class="btn small" href="changelog.html">Full changelog</a></div>';
+    box.innerHTML = '<header><h2>Version ' + S.esc(r.version) + '</h2><span class="meta">' + (r.date ? S.fmtDate(r.date) : "") + '</span></header><div class="md">' + S.md(r.notes) + '</div><div class="files"><a class="btn small primary" href="' + (r.mirror || r.download) + '" download>Download APK</a><a class="btn small" href="install.html">How to install</a><a class="btn small" href="changelog.html">Full changelog</a></div>';
   }).catch(function () { document.getElementById("latest").innerHTML = '<div class="md"><p>Couldn\'t load the release list.</p></div>'; });
 })();
 </script>

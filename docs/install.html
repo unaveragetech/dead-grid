@@ -17,8 +17,9 @@
       <span class="kicker">Install</span>
       <h1>Get Dead Grid</h1>
       <p class="lead">Dead Grid isn't on the Play Store. You download the APK straight from this site's GitHub releases and install it yourself. It takes about two minutes.</p>
-      <div class="btns" id="download"><a class="btn primary" id="dl" href="#">Loading...</a><a class="btn" id="gh" href="#">All files on GitHub</a></div>
+      <div class="btns" id="download"><a class="btn primary" id="dl" href="download/DeadGrid.apk" download>⬇ Download Dead Grid</a></div>
       <small id="dlsub" style="color:var(--muted)"></small>
+      <p class="alt-dl">Download not starting? <a id="dl2" href="https://github.com/unaveragetech/dead-grid/releases/latest">Get it from GitHub instead</a> · <a id="gh" href="https://github.com/unaveragetech/dead-grid/releases">all versions</a>. If you opened this page inside another app (Discord, Instagram, Facebook), open it in Chrome first: in-app browsers often block downloads.</p>
     </div>
     <div class="phone tilt"><img src="img/guide.webp" alt="The built-in survival guide on your first day" width="412" height="860"></div>
   </div>
@@ -86,14 +87,14 @@
   S.releases().then(function (list) {
     var r = list[0], dl = document.getElementById("dl");
     if (!r) { dl.textContent = "No release yet"; return; }
-    dl.href = r.download;
+    dl.href = r.mirror || r.download; document.getElementById("dl2").href = r.download;
     dl.textContent = "Download v" + r.version + " (" + S.fmtSize(r.size) + ")";
     document.getElementById("dlsub").textContent = r.date ? "Released " + S.fmtDate(r.date) + "." : "";
     document.querySelector("#tbl tbody").innerHTML = list.map(function (x) {
       return "<tr><td>v" + S.esc(x.version) + (x === r ? ' <span class="tag">latest</span>' : "") + "</td><td>" + (x.date ? S.fmtDate(x.date) : "") + "</td><td>" + S.fmtSize(x.size) + '</td><td class="hash">' + S.esc(x.sha256) + '<br><button class="copy btn small" data-h="' + S.esc(x.sha256) + '">copy</button></td><td><a class="btn small" href="' + x.download + '">APK</a></td></tr>';
     }).join("");
     S.copyButtons();
-  }).catch(function () { document.getElementById("dl").textContent = "Couldn't load the release list"; });
+  }).catch(function () { /* the button is a plain link to download/DeadGrid.apk, so it still works */ });
 })();
 </script>
 </body>
