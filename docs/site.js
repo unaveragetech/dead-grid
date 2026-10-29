@@ -62,7 +62,7 @@
         '<div class="wrap"><a class="brand" href="index.html"><span class="mark">' + esc(site.icon) + "</span> " + esc(site.name) + "</a>" +
         '<button class="menu-btn" aria-label="Menu" id="menu-btn">&#9776;</button><nav class="main" id="main-nav">' +
         NAV.map(function (p) { return '<a href="' + p[0] + '"' + (here === p[0] ? ' class="on"' : "") + ">" + p[1] + "</a>"; }).join("") +
-        '<a class="dl" href="install.html#download">Download</a></nav></div>';
+        '<a href="play/" class="play">▶ Play</a><a class="dl" href="install.html#download">Download</a></nav></div>';
       document.getElementById("menu-btn").addEventListener("click", function () { document.getElementById("main-nav").classList.toggle("open"); });
     }
     var foot = document.getElementById("site-footer");
