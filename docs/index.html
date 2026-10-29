@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dead Grid: zombie survival on your real street</title>
+<meta name="description" content="Dead Grid is a free zombie survival and tower-defense game for Android played on your real neighbourhood. Real streets from OpenStreetMap, real population from the US Census.">
+<meta name="theme-color" content="#0d0f0c">
+<meta property="og:title" content="Dead Grid">
+<meta property="og:description" content="Zombie survival on your real street. Fortify your HQ, keep your survivors alive, hold the grid.">
+<meta property="og:image" content="https://unaveragetech.github.io/dead-grid/img/hq.webp">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <span class="kicker"><span class="beta">Open beta</span> Free Android game · No ads · No account</span>
+      <h1>Dead Grid</h1>
+      <p class="lead">The outbreak starts at the edge of your map, and the map is <b>your real neighbourhood</b>. Type any US address and its streets, buildings, hospitals and stores become the world you have to survive in. Fortify the building, keep your people alive, and get through the night.</p>
+      <div class="btns">
+        <a class="btn primary" id="dl" href="install.html#download">Download for Android</a>
+        <a class="btn" href="#trailer">▶ Watch the trailer</a>
+        <a class="btn" href="tips.html">Tips &amp; tricks</a>
+      </div>
+      <small id="sub" style="color:var(--muted)">Android 8.0 or newer · about 3 MB · updates install over the old version and keep your save.</small>
+    </div>
+    <div class="phone tilt"><img src="img/hq.webp" alt="Your HQ on a real street map, with survivors on the left and the build dock below" width="412" height="860"></div>
+  </div>
+
+  <section id="trailer" class="anchor">
+    <span class="kicker">Beta trailer</span>
+    <h2>It started on your street.</h2>
+    <div class="trailer"><video controls playsinline preload="metadata" poster="media/trailer-poster.jpg"><source src="media/trailer.mp4" type="video/mp4">Your browser can't play this video. <a href="media/trailer.mp4">Download the trailer</a>.</video></div>
+    <small style="color:var(--muted)">Real gameplay from the current beta, recorded at Pike Place in Seattle, Jackson Square in New Orleans, Fenway in Boston, Graceland in Memphis and the Las Vegas Strip. Sound on, lights off.</small>
+  </section>
+
+  <section>
+    <div class="stats">
+      <div class="stat"><b>Any US address</b><span>streets and buildings from OpenStreetMap</span></div>
+      <div class="stat"><b>Real population</b><span>2020 Census decides how big the horde gets</span></div>
+      <div class="stat"><b>12 defenses</b><span>turrets, mortars, tesla coils, mines, floodlights</span></div>
+      <div class="stat"><b>3 robots + drones</b><span>to fight, haul, repair and scavenge</span></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">How a day plays</span>
+    <h2>Scavenge by day. Hold the wall at night.</h2>
+    <div class="loop">
+      <div class="card"><h3>☀️ Day: build and gather</h3><p>The streets are quiet. Place turrets inside your wall, pipe water to the HQ, and send drones to loot the real shops and pharmacies around you.</p></div>
+      <div class="card"><h3>🧍 Run the camp</h3><p>Survivors need food, water, sleep, hygiene and morale. Give them jobs, set camp rules, settle their fights, and decide what happens to the bitten.</p></div>
+      <div class="card"><h3>🌙 Night: the siege</h3><p>At dusk the infected come for your walls: walkers, runners, spitters, brutes and worse. Your wall crew patches breaches while the guns do the rest.</p></div>
+      <div class="card"><h3>💬 Talk to them</h3><p>Every survivor has a temperament, a secret, a fear and a way of talking. What you say changes what they do next: confess, steal, leave, fall in love, or walk out into the dark alone.</p></div>
+      <div class="card"><h3>📁 Case 0047</h3><p>Something about this outbreak doesn't add up. A numbers station at night, a keycard in a gutter, a body with a hospital band, a horde that all turns to face north. Piece it together.</p></div>
+      <div class="card"><h3>🗺️ Push outward</h3><p>Claim the blocks around you, capture strongholds for new weapons, answer radio calls, and take the grid back one block at a time.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">Screenshots</span>
+    <h2>A look inside</h2>
+    <div class="strip">
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/bunker1.webp" alt="First-person view of the bunker mess hall with a cooking pot"></div><figcaption>Walk the bunker in first person</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/night0.webp" alt="Night siege on the map"></div><figcaption>Night falls: the siege begins</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/build.webp" alt="Build panel with turrets and barricades"></div><figcaption>Turrets, barricades, mines</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/people.webp" alt="Survivor needs panel"></div><figcaption>Keep your survivors alive</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/radio.webp" alt="Radio channels with factions"></div><figcaption>Factions on the radio</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/drones.webp" alt="Drone fleet panel"></div><figcaption>Scavenging drones</figcaption></figure>
+      <figure class="shot"><div class="phone"><img loading="lazy" src="img/start.webp" alt="Start screen asking for an address"></div><figcaption>Start anywhere in the US</figcaption></figure>
+    </div>
+    <small style="color:var(--muted)">Swipe for more · tap a screenshot to enlarge.</small>
+  </section>
+
+  <section>
+    <span class="kicker">Highlights</span>
+    <div class="grid" id="features"></div>
+  </section>
+
+  <section>
+    <div class="banner">
+      <div><h2>New to Dead Grid?</h2><p style="margin:.3em 0 0;color:var(--muted)">Read the tips page before your first night. Water and noise are what end most first games.</p></div>
+      <a class="btn primary" href="tips.html">Tips &amp; tricks</a>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">Latest release</span>
+    <div id="latest" class="rel"><div class="md"><p>Loading...</p></div></div>
+  </section>
+</div>
+</main>
+<div id="site-footer"></div>
+<script src="site.js"></script>
+<script>
+(function () {
+  var S = window.Site;
+  S.ready.then(function (site) {
+    document.getElementById("features").innerHTML = (site.features || []).slice(0, 6).map(function (f) {
+      return '<div class="card"><div class="ic">' + S.esc(f.icon || "") + "</div><h3>" + S.esc(f.title) + "</h3><p>" + S.esc(f.text) + "</p></div>";
+    }).join("");
+  });
+  S.releases().then(function (list) {
+    var r = list[0], box = document.getElementById("latest");
+    if (!r) { box.innerHTML = '<div class="md"><p>No release has been published yet.</p></div>'; return; }
+    document.getElementById("dl").href = r.download;
+    document.getElementById("dl").textContent = "Download v" + r.version + " (" + S.fmtSize(r.size) + ")";
+    box.innerHTML = '<header><h2>Version ' + S.esc(r.version) + '</h2><span class="meta">' + (r.date ? S.fmtDate(r.date) : "") + '</span></header><div class="md">' + S.md(r.notes) + '</div><div class="files"><a class="btn small primary" href="' + r.download + '">Download APK</a><a class="btn small" href="install.html">How to install</a><a class="btn small" href="changelog.html">Full changelog</a></div>';
+  }).catch(function () { document.getElementById("latest").innerHTML = '<div class="md"><p>Couldn\'t load the release list.</p></div>'; });
+})();
+</script>
+</body>
+</html>

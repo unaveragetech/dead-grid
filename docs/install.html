@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download and install Dead Grid</title>
+<meta name="description" content="Step-by-step install guide for Dead Grid on Android, with checksums for every release.">
+<meta name="theme-color" content="#0d0f0c">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+<div class="wrap">
+  <div class="hero ihero">
+    <div>
+      <span class="kicker">Install</span>
+      <h1>Get Dead Grid</h1>
+      <p class="lead">Dead Grid isn't on the Play Store. You download the APK straight from this site's GitHub releases and install it yourself. It takes about two minutes.</p>
+      <div class="btns" id="download"><a class="btn primary" id="dl" href="#">Loading...</a><a class="btn" id="gh" href="#">All files on GitHub</a></div>
+      <small id="dlsub" style="color:var(--muted)"></small>
+    </div>
+    <div class="phone tilt"><img src="img/guide.webp" alt="The built-in survival guide on your first day" width="412" height="860"></div>
+  </div>
+
+  <section>
+    <div class="req">
+      <div class="stat"><b>Android 8.0+</b><span>any phone from the last ~8 years</span></div>
+      <div class="stat"><b>About 3 MB</b><span>plus map data for the area you pick</span></div>
+      <div class="stat"><b>Internet on first load</b><span>to download the map and census data</span></div>
+      <div class="stat"><b>Free</b><span>no ads, no purchases, no account</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Install in four steps</h2>
+    <ol class="big">
+      <li><b class="t">Download the APK</b><p>Tap the green button above <b>on your phone</b>. Wait until the download finishes before you open it.</p></li>
+      <li><b class="t">Open the file</b><p>Tap the download notification, or open the <b>Files / Downloads</b> app and tap <code>DeadGrid-v….apk</code>.</p></li>
+      <li><b class="t">Allow the install</b><p>Android may say it blocks installs from unknown sources. Tap <b>Settings</b>, turn on <b>Allow from this source</b> for your browser or file manager, then go back. If Play Protect asks, choose <b>Install anyway</b>. This is a normal warning for any app that doesn't come from the Play Store.</p></li>
+      <li><b class="t">Play</b><p>Open <b>Dead Grid</b> from your app drawer. Type an address or tap <b>📍 Use my current location</b>, then follow the survival guide through your first day.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What it asks for</h2>
+    <div class="grid two">
+      <div class="callout"><h3>📍 Location (optional)</h3><p>Only when you tap <b>Use my current location</b>, to put your HQ where you're standing. Say no and type an address instead. The game works the same either way.</p></div>
+      <div class="callout"><h3>🌐 Internet</h3><p>Used to fetch map tiles and buildings (OpenStreetMap), population (US Census) and to look up addresses. There are no ads, no analytics and no accounts.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Updating</h2>
+    <p>Download the newer APK from this page and install it over the old one. Your stronghold save is kept, because every release is signed with the same key. You don't need to uninstall first.</p>
+  </section>
+
+  <section>
+    <h2>Check the download (optional)</h2>
+    <p>Every release lists a SHA-256 checksum. If Android says the package "can't be parsed" or is "invalid", the download is usually incomplete. Compute the checksum of your file (<code>sha256sum file.apk</code>, or any checksum app), compare it with the one below, and download again if they differ.</p>
+  </section>
+
+  <section>
+    <h2>All versions</h2>
+    <div style="overflow-x:auto"><table id="tbl"><thead><tr><th>Version</th><th>Date</th><th>Size</th><th>SHA-256</th><th></th></tr></thead><tbody><tr><td colspan="5">Loading...</td></tr></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>If something goes wrong</h2>
+    <div class="grid two">
+      <div class="callout"><h3>"App not installed"</h3><p>You may have an older build signed with a different key. Uninstall it first (this removes its local data), then install again.</p></div>
+      <div class="callout"><h3>"There was a problem parsing the package"</h3><p>The download is incomplete or damaged. Check the checksum above and download again.</p></div>
+      <div class="callout"><h3>The map won't load</h3><p>The first load needs a working connection, and the public map servers are sometimes busy. Wait a minute and try again, or try a nearby address.</p></div>
+      <div class="callout"><h3>Can't find the file</h3><p>Look in the Downloads app, or in your browser's download list.</p></div>
+      <div class="callout"><h3>Still stuck?</h3><p><a id="issues" href="#">Open an issue on GitHub</a> and say your Android version and what the message says.</p></div>
+    </div>
+  </section>
+</div>
+</main>
+<div id="site-footer"></div>
+<script src="site.js"></script>
+<script>
+(function () {
+  var S = window.Site;
+  S.ready.then(function (site) { document.getElementById("issues").href = site.repo + "/issues"; document.getElementById("gh").href = site.repo + "/releases"; });
+  S.releases().then(function (list) {
+    var r = list[0], dl = document.getElementById("dl");
+    if (!r) { dl.textContent = "No release yet"; return; }
+    dl.href = r.download;
+    dl.textContent = "Download v" + r.version + " (" + S.fmtSize(r.size) + ")";
+    document.getElementById("dlsub").textContent = r.date ? "Released " + S.fmtDate(r.date) + "." : "";
+    document.querySelector("#tbl tbody").innerHTML = list.map(function (x) {
+      return "<tr><td>v" + S.esc(x.version) + (x === r ? ' <span class="tag">latest</span>' : "") + "</td><td>" + (x.date ? S.fmtDate(x.date) : "") + "</td><td>" + S.fmtSize(x.size) + '</td><td class="hash">' + S.esc(x.sha256) + '<br><button class="copy btn small" data-h="' + S.esc(x.sha256) + '">copy</button></td><td><a class="btn small" href="' + x.download + '">APK</a></td></tr>';
+    }).join("");
+    S.copyButtons();
+  }).catch(function () { document.getElementById("dl").textContent = "Couldn't load the release list"; });
+})();
+</script>
+</body>
+</html>

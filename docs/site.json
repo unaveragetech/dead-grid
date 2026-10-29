@@ -1,0 +1,47 @@
+{
+  "name": "Dead Grid",
+  "fileName": "DeadGrid",
+  "tagline": "Hold your block. Hold the grid.",
+  "description": "Dead Grid is a free zombie survival and tower-defense game played on your real neighbourhood. Real streets come from OpenStreetMap and real population from the US Census. Fortify an HQ bunker, recruit survivors with their own needs and grudges, build walls, turrets, robots and drones, and hold out against the siege.",
+  "icon": "☣",
+  "themeColor": "#8fd14f",
+  "repo": "https://github.com/unaveragetech/dead-grid",
+  "pagesUrl": "https://unaveragetech.github.io/dead-grid/",
+  "applicationId": "com.deadgrid.game",
+  "minAndroid": "8.0",
+  "features": [
+    {
+      "icon": "🗺️",
+      "title": "Your real neighbourhood",
+      "text": "Pick any US address. Streets and buildings come from OpenStreetMap and the horde size comes from real Census population data."
+    },
+    {
+      "icon": "🏚️",
+      "title": "A bunker you can walk",
+      "text": "Step inside your HQ in first person. Survivors cook, haul crates, repair gear, treat the wounded and sleep in the bunk room."
+    },
+    {
+      "icon": "🧱",
+      "title": "Walls, turrets, robots, drones",
+      "text": "Fortify block by block, automate defense and salvage, and send drones out to scavenge the dead city."
+    },
+    {
+      "icon": "🧍",
+      "title": "Survivors with lives",
+      "text": "Every survivor has needs, memories, friendships and grudges. Keep them fed, rested and on your side."
+    },
+    {
+      "icon": "📻",
+      "title": "Radio missions",
+      "text": "Answer calls on the radio set for rescues, supply runs and rumours. Some are traps."
+    },
+    {
+      "icon": "📴",
+      "title": "Offline friendly",
+      "text": "No account, no ads, no tracking. Your save stays on your phone. Map data downloads once per area."
+    }
+  ],
+  "links": [],
+  "privacy": "Dead Grid has no accounts, ads or analytics. It contacts OpenStreetMap (map tiles and the Overpass API), the US Census Bureau and an address geocoder only to build the map for the place you pick. Location permission is used only if you tap \"Use my current location\". Your save game is stored only on your device.",
+  "extras": []
+}

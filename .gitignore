@@ -1,0 +1,5 @@
+# APKs are uploaded to GitHub Releases, not committed (they are huge)
+*.apk
+*.aab
+*.sha256
+*.ipa

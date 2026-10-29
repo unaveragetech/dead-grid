@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About Dead Grid</title>
+<meta name="description" content="About Dead Grid, privacy and where to get help.">
+<meta name="theme-color" content="#0d0f0c">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+<div class="wrap">
+  <div class="pagehead">
+    <span class="kicker">About</span>
+    <h1>About Dead Grid</h1>
+    <p class="lead">Dead Grid is a free zombie survival and tower-defense game played on your real neighbourhood. Real streets come from OpenStreetMap and real population from the US Census. Fortify an HQ bunker, recruit survivors with their own needs and grudges, build walls, turrets, robots and drones, and hold out against the siege.</p>
+  </div>
+
+  <section id="privacy">
+    <h2>Privacy</h2>
+    <p id="privacy-text">Dead Grid has no accounts, ads or analytics. It contacts OpenStreetMap (map tiles and the Overpass API), the US Census Bureau and an address geocoder only to build the map for the place you pick. Location permission is used only if you tap &quot;Use my current location&quot;. Your save game is stored only on your device.</p>
+  </section>
+
+  <section>
+    <h2>Help and feedback</h2>
+    <p>Found a problem or have an idea? <a id="issues" href="#">Open an issue on GitHub</a>. Every release and its notes are on the <a id="releases" href="#">releases page</a>.</p>
+  </section>
+
+  <section>
+    <h2>How releases are made</h2>
+    <p>Each release is built, checked against the app's signing key and published to GitHub together with a SHA-256 checksum. This site and the app's update check read the same <a href="releases.json">releases.json</a>.</p>
+  </section>
+</div>
+</main>
+<div id="site-footer"></div>
+<script src="site.js"></script>
+<script>
+window.Site.ready.then(function (site) {
+  document.getElementById("issues").href = site.repo + "/issues";
+  document.getElementById("releases").href = site.repo + "/releases";
+  if (site.privacy) document.getElementById("privacy-text").textContent = site.privacy;
+});
+</script>
+</body>
+</html>
