@@ -3,6 +3,19 @@
   "site": "https://unaveragetech.github.io/dead-grid/",
   "releases": [
     {
+      "version": "1.4.2",
+      "versionCode": 8,
+      "tag": "v1.4.2",
+      "date": "2026-10-29T20:59:09Z",
+      "apk": "DeadGrid-v1.4.2.apk",
+      "size": 5829474,
+      "sha256": "21ade07215fdc475f1c342405c5a3427fd7a5c7199135ecfa25f46603902536f",
+      "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.4.2",
+      "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.4.2/DeadGrid-v1.4.2.apk",
+      "notes": "## Dead Grid 1.4.2: play in your browser\n\nAndroid `.apk` only. Or play in the browser, on any device.\n\n### What's new\n- **Play in the browser** at https://unaveragetech.github.io/dead-grid/play/: the full game with every feature, on iPhone, iPad, PC, Mac or Android, with no download. It's the exact same build as the Android app and updates with every release.\n- **Install it like an app.** On iPhone or iPad, tap Share → Add to Home Screen. On Android or desktop, use the browser's Install option. It gets its own icon, runs full screen, and keeps working offline once loaded.\n- **Self-updating.** The browser version checks for new releases. When one is out, a \"Reload to update\" button appears, and your save stays put.\n- On wide screens the panels stay a readable width instead of stretching across the window.\n\n### Fixes\n- The website now has a Play button in the header and on the home page, alongside the Android download.\n\n### Tested\n- Ran the browser version at phone and desktop sizes: the start screen, the map, panels, the bunker and the About panel all work. The offline service worker registers.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n",
+      "mirror": "https://unaveragetech.github.io/dead-grid/download/DeadGrid.apk"
+    },
+    {
       "version": "1.4.1",
       "versionCode": 7,
       "tag": "v1.4.1",
@@ -12,8 +25,7 @@
       "sha256": "7ec4db5ea75e6e39ab4d861999274cc8128fd0e24037ef98d9dc981448af5ed3",
       "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.4.1",
       "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.4.1/DeadGrid-v1.4.1.apk",
-      "notes": "## Dead Grid 1.4.1: quieter rain and reliable downloads\n\nAndroid `.apk` only.\n\n### What's new\n- **Sound settings** (More → Sound, or About → Sound settings): separate sliders for master volume, effects, music, ambience and weather, saved on your phone.\n\n### Fixes\n- **Rain is no longer deafening.** An old rain layer was still playing loud white noise underneath the newer rain sound. It's gone, and the remaining rain, drips and thunder are much quieter and softer, with a weather volume slider of their own. Measured on the game's output, rain used to push the whole mix about 4.5 dB louder; it no longer raises the overall level at all.\n- **Downloads from the website are reliable.** The download buttons now link straight to a copy of the APK on the website itself, with no redirect to GitHub's storage servers, and they work even if the page's scripts haven't loaded. The GitHub release link is still there as a backup, along with a note about in-app browsers that block downloads.\n- The in-app update check downloads from the same direct link.\n\n### Tested\n- Measured the game's audio output in clear weather and in rain, outside and inside the bunker, before and after the change.\n- Checked that the website's download link responds directly with the APK, without a redirect.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n",
-      "mirror": "https://unaveragetech.github.io/dead-grid/download/DeadGrid.apk"
+      "notes": "## Dead Grid 1.4.1: quieter rain and reliable downloads\n\nAndroid `.apk` only.\n\n### What's new\n- **Sound settings** (More → Sound, or About → Sound settings): separate sliders for master volume, effects, music, ambience and weather, saved on your phone.\n\n### Fixes\n- **Rain is no longer deafening.** An old rain layer was still playing loud white noise underneath the newer rain sound. It's gone, and the remaining rain, drips and thunder are much quieter and softer, with a weather volume slider of their own. Measured on the game's output, rain used to push the whole mix about 4.5 dB louder; it no longer raises the overall level at all.\n- **Downloads from the website are reliable.** The download buttons now link straight to a copy of the APK on the website itself, with no redirect to GitHub's storage servers, and they work even if the page's scripts haven't loaded. The GitHub release link is still there as a backup, along with a note about in-app browsers that block downloads.\n- The in-app update check downloads from the same direct link.\n\n### Tested\n- Measured the game's audio output in clear weather and in rain, outside and inside the bunker, before and after the change.\n- Checked that the website's download link responds directly with the APK, without a redirect.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n"
     },
     {
       "version": "1.4.0",
