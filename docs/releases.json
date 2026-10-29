@@ -3,6 +3,18 @@
   "site": "https://unaveragetech.github.io/dead-grid/",
   "releases": [
     {
+      "version": "1.3.1",
+      "versionCode": 5,
+      "tag": "v1.3.1",
+      "date": "2026-10-29T05:44:48Z",
+      "apk": "DeadGrid-v1.3.1.apk",
+      "size": 5711420,
+      "sha256": "dc5374b5be88eca2b07e4c44d78b72d8c145533395c941d67a40477bd88156e5",
+      "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.3.1",
+      "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.3.1/DeadGrid-v1.3.1.apk",
+      "notes": "## Dead Grid 1.3.1: trailer and update checks in the app\n\nAndroid `.apk` only.\n\n### What's new\n- **The trailer plays the first time you open the game.** It's built into the app, so it works offline. Tap Skip any time. You can watch it again from the start screen or More → About.\n- **About & updates menu** (start screen, or More → About): shows your version, checks for updates, and has links to the website, tips & tricks, the changelog and bug reports.\n- **Automatic update check** once a day when the game opens. If a new version is out, a banner on the start screen links straight to the download, which installs over your current version and keeps your save.\n\n### Fixes\n- Website links from inside the app now open in your phone's browser instead of replacing the game.\n\n### Tested\n- In a desktop browser: the first-launch trailer, Skip, it not replaying on the next launch, the About panel, the update check against the live website, and the update banner.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n"
+    },
+    {
       "version": "1.3.0",
       "versionCode": 4,
       "tag": "v1.3.0",
