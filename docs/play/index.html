@@ -134,6 +134,8 @@ body.inside #radar{bottom:auto;top:calc(env(safe-area-inset-top) + 82px)}
 .persona{display:flex;gap:10px;align-items:center;margin:4px 0 8px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#0006}
 .persona img{width:56px;height:56px;border-radius:8px;border:1px solid #3a4430}.persona b{display:block;font-size:13px}.persona small{display:block;color:var(--dim);font-size:12px}.persona i{display:block;color:#9be15d;font-size:12px;margin-top:2px}
 @media (min-width:900px){#sheet{left:calc(50% - 300px)!important;right:calc(50% - 300px)!important}}
+#spd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:510;display:flex;gap:2px;padding:3px;background:#11150fe6;border:1px solid #3d4a35;border-radius:12px;box-shadow:0 4px 14px #0008}
+#spd.hide,body.inside #spd{display:none}#spd button{min-width:44px;min-height:34px;padding:0 8px;font:700 13px system-ui;background:none;border:0;box-shadow:none;color:var(--dim);border-radius:9px}#spd button.on{background:#9be15d;color:#10140c}#spd.paused button.on{background:#ffb340}
 #trailer{position:fixed;inset:0;z-index:2000;background:#000;display:flex;align-items:center;justify-content:center}
 #trailer video{width:100%;height:100%;object-fit:contain;background:#000}
 #tr-skip{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 14px);background:#000a;border-color:#fff4;box-shadow:none}
@@ -318,7 +320,6 @@ body.inside #roster{display:none}
   <div id="hudrow">
     <div id="phase"><span id="ph-ic">☀️</span><div style="flex:1;min-width:0"><b id="ph-t">DAY 1</b><small id="ph-s"></small><div id="ph-bar"><i></i></div></div></div>
     <div id="vitals"><div>🏠<i id="v-hq"><b></b></i></div><div>🧱<i id="v-wall"><b></b></i></div></div>
-    <button id="b-speed" class="fab">⏩<span>1x</span></button>
   </div>
   <div id="resrow">
     <span class="res">🔩<b id="r-scrap">0</b></span><span class="res">🥫<b id="r-food">0</b></span><span class="res">💧<b id="r-water">0</b></span><span class="res">💊<b id="r-meds">0</b></span><span class="res">⛽<b id="r-fuel">0</b></span><span class="res">🔸<b id="r-ammo">0</b></span><span class="res">🔌<b id="r-elec">0</b></span><span class="res">⚡<b id="r-pow">0</b></span><span class="res">👥<b id="r-surv">0</b></span><span class="res" id="camp">🙂</span><span class="res" id="sea"></span>
@@ -345,6 +346,7 @@ body.inside #roster{display:none}
 </div>
 <button id="b-radio" class="fab side hide">📻</button>
 
+<div id="spd" class="hide"><button data-v="0" onclick="setSpeed(0)">⏸</button><button data-v="1" class="on" onclick="setSpeed(1)">1×</button><button data-v="2" onclick="setSpeed(2)">2×</button><button data-v="4" onclick="setSpeed(4)">4×</button></div>
 <div id="sheet"></div>
 <div id="about" class="hide" onclick="if(event.target===this)aboutClose()"><div id="about-body"></div></div>
 <div id="cut" class="hide" onclick="cutTap()"><i class="bar t"></i><i class="bar b"></i><div id="cut-body"></div><button id="cut-skip" onclick="event.stopPropagation();cutSkip()">Skip ▸</button></div>
@@ -371,7 +373,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.5.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
 const $ = id => document.getElementById(id);
@@ -627,7 +629,7 @@ async function begin(st) {
   if (intro) await intro;
   S.f.introSeen = true; $('loading').classList.add('hide');
   buildRoadGraph(); syncPeople(); computeWallShape(); initRivals(); initContacts(); S.people.forEach(p => { if (p.mission && !(S.missions || []).some(m => m.id === p.mission && m.st !== 'done')) { p.mission = null; p.out = false; } });
-  ['top', 'bot', 'obj', 'radar', 'noise', 'b-radio', 'roster'].forEach(id => $(id).classList.remove('hide'));
+  ['top', 'bot', 'obj', 'radar', 'noise', 'b-radio', 'roster', 'spd'].forEach(id => $(id).classList.remove('hide'));
   initMap();
   for (let k = 0; k < 1 + S.up.bay; k++) addDrone();
   const c = S.census;
@@ -718,7 +720,6 @@ function setBuild(k) {
 }
 window.setBuild = setBuild;
 $('b-build').onclick = () => buildMode ? setBuild(null) : buildSheet();
-$('b-speed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $('b-speed').lastChild.textContent = speed + 'x'; };
 $('b-walls').onclick = () => wallSheet();
 $('b-more').onclick = () => moreSheet();
 $('b-drones').onclick = () => droneSheet();
@@ -852,7 +853,7 @@ function robotSheetOld() {
 window.buildRobot = k => {
   if (S.robots.length >= robotCap()) return toast('Robot capacity full: upgrade the factory');
   if (!pay(ROBOTS[k].cost)) return;
-  S.robots.push({ type: k, x: 0, y: -8, hp: ROBOTS[k].hp, mode: 'guard', cd: 0, post: rnd(0, 6.28), order: 'auto', name: pick(['Bolt', 'Rusty', 'Tinker', 'Mule', 'Gizmo', 'Atlas', 'Ox', 'Rook', 'Juno', 'Clank']) });
+  S.robots.push({ type: k, x: 0, y: -8, hp: ROBOTS[k].hp, mode: 'guard', cd: 0, post: rnd(0, 6.28), order: 'auto', name: pick(['Bolt', 'Rusty', 'Tinker', 'Mule', 'Gizmo', 'Atlas', 'Ox', 'Rook', 'Juno', 'Clank', 'Gerald', 'Dot', 'Hammer', 'Moss', 'Pickle', 'Sarge', 'Nails', 'Tallboy', 'Wren', 'Biscuit']) });
   toast(ROBOTS[k].name + ' rolled out of the factory'); robotSheet();
 };
 window.recall = k => { S.robots[k].mode = 'guard'; robotSheet(); };
@@ -907,7 +908,7 @@ function droneThink(d, dt) {
     const sc = p => Math.hypot(p.x, p.y) / (.15 + depOf(p.x, p.y)) * (1 + ((cellAt(p) || {}).i || 0) / 35);
     cand.sort((a, b) => sc(a) - sc(b));
     d.target = cand[0]; d.st = 'out'; d.mission = 'scav'; d.t0 = S.t; sfx('drone', 0, 0, .8); d.wear = (d.wear || 0) + .07;
-    d.battery = S.res.fuel < 1; if (d.target.type !== 'fuel' && !d.battery) S.res.fuel -= 1;
+    d.battery = S.res.fuel < 1; if (d.target.type !== 'fuel' && !d.battery) S.res.fuel -= .35;
   } else if (d.st === 'out') {
     if (d.mission === 'scav' && d.target.loot <= 0) { d.st = 'back'; return; }
     const purge = d.mission === 'purge';
@@ -1070,7 +1071,7 @@ function zombieThink(z, dt) {
 }
 
 // ================= towers =================
-const dmgMul = () => 1 + .2 * S.up.work + .03 * S.camp.jobs.guard;
+const dmgMul = () => 1 + .2 * S.up.work + .03 * S.camp.jobs.guard + .06 * (S.up.arms || 0);
 function towerThink(t, dt, overload) {
   const d = TOWERS[t.type]; if (!d.rate || (t.bp ?? 1) < 1) return;
   t.cd -= dt;
@@ -1092,8 +1093,9 @@ function towerThink(t, dt, overload) {
   if (isNight() && S.towers.some(l => l.type === 'light' && dist(l, t) < TOWERS.light.range)) dmg *= 1.4;
   t.fired = performance.now(); if (t.type === 'mg') fx.push({ k: 'cas', x: t.x + rnd(-1.5, 1.5), y: t.y + rnd(-1.5, 1.5), t: .7 });
   const loud = { mg: [70, .3], sniper: [110, .8], flamer: [40, .1], mortar: [160, 1.5], tesla: [50, .3], rocket: [140, 1.2] }[t.type] || [60, .3];
-  noise(t.x, t.y, loud[0], loud[1]); sfx(t.type, t.x, t.y);
-  if (t.type === 'mortar') {
+  if (!d.quiet) noise(t.x, t.y, loud[0], loud[1]); sfx(SFX[t.type] ? t.type : d.look && SFX[d.look] ? d.look : 'mg', t.x, t.y);
+  if (d.fire) d.fire(t, z, dmg);
+  else if (t.type === 'mortar') {
     shells.push({ x: z.x, y: z.y, t: 1.4, dmg, r: d.splash, src: t });
   } else if (d.chain) {
     let cur = z, prev = { x: t.x, y: t.y, h: 4 }; const done = new Set();
@@ -1131,6 +1133,8 @@ function worldTick() {
   for (const k in next) cell(...k.split(',').map(Number)).i = next[k];
   for (const z of zombies) { const c = cellAt(z); if (c && c.c) c.i = Math.min(100, c.i + .4); }
   for (const [k, c] of Object.entries(S.cells)) if (c.c && c.i >= 60 && k !== '0,0') {
+    const pl = (S.plots || {})[k]; if (pl && pl.hp > 0) { c.i = 45; pl.hp -= plotMax(pl) * .25; continue; }
+    if (pl) delete S.plots[k];
     c.c = false; toast(`Block ${k} fell to the infection!`);
     S.towers = S.towers.filter(t => { const [a, b] = cellOf(t.x, t.y); return key(a, b) !== k; });
   }
@@ -1194,7 +1198,7 @@ function loop(now) {
 }
 function loopBody(now) {
   if (over) return;
-  const real = Math.min(.1, (now - (last || now)) / 1000); last = now;
+  const real = Math.max(0, Math.min(.1, (now - (last || now)) / 1000)); last = now;
   const dt = real * speed;
   tickAcc += dt; saveAcc += dt; spawnAcc += dt;
   while (tickAcc >= 1) { tickAcc -= 1; worldTick(); }
@@ -1343,10 +1347,9 @@ function draw() {
     if (dr.st === 'idle' || dr.st === 'repair') continue;
     if (dr.st === 'down') { const [x, y] = P(dr.x, dr.y); ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x + 5, y + 2); ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4); ctx.stroke(); ctx.fillStyle = `rgba(120,120,120,${.35 + .2 * Math.sin(performance.now() / 300)})`; ctx.beginPath(); ctx.arc(x + 2, y - 6 - (performance.now() / 80 % 10), 3, 0, 7); ctx.fill(); ctx.font = '13px system-ui'; ctx.fillText(dr.claim ? '🚜' : '⚠️', x, y - 16); continue; }
     const [x, y] = P(dr.x, dr.y);
-    ctx.strokeStyle = '#7cf'; ctx.lineWidth = 2; ctx.beginPath();
-    ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke();
-    ctx.fillStyle = dr.cargo ? '#ffb340' : '#7cf'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+    drawDrone(ctx, dr, x, y, k, performance.now());
   }
+  drawVfx(ctx, P, k, performance.now());
   for (const f of fx) {
     if (f.k === 'shot' || f.k === 'flame' || f.k === 'zap') {
       const [ax, ay] = P(f.a.x, f.a.y), [bx, by] = P(f.b.x, f.b.y);
@@ -3433,7 +3436,7 @@ function rivalTick() {
     }
   }
   // hostile rivals shoot down drones crossing their turf
-  for (const d of drones) if (d.st === 'out' || d.st === 'back' || d.st === 'scav') for (const R of S.rivals) if (!R.dead && R.rel <= -30 && Math.hypot(d.x - R.x, d.y - R.y) < 160 && Math.random() < .04) { droneDown(d, `was shot down over ${R.n} turf`); R.rel -= 2; break; }
+  for (const d of drones) if (d.st === 'out' || d.st === 'back' || d.st === 'scav') for (const R of S.rivals) if (!R.dead && R.rel <= -30 && Math.hypot(d.x - R.x, d.y - R.y) < 160 && Math.random() < (R.style === 'hunters' ? .1 : .04)) { droneDown(d, `was shot down over ${R.n} turf`); R.rel -= 2; break; }
 }
 window.rivalAct = (id, a) => {
   const R = S.rivals[id]; if (!R) return;
@@ -3455,7 +3458,7 @@ function rivalSheet() {
   openSheet(`<h3>⚑ Rival strongholds</h3>
     <p class="explain">Other survivors are holed up nearby, and they scavenge the <b>same streets</b> you do. Every block they strip is loot your drones and scavengers won't find. Hostile groups shoot down drones over their turf and hit your wall at night. Allies send gifts and shooters.</p>
     <div class="row"><div>Your strength<small>Robots, guards and turrets</small></div><b>${mine}</b></div>
-    ${S.rivals.map(R => { const [rn, rc] = relName(R.rel); return `<div class="row" style="display:block"><div class="rl"><span class="ico" style="--c:${R.col}">${R.i}</span><div style="flex:1"><b>${R.n}</b> <span class="chip" style="color:${rc}">${R.dead ? 'Scattered' : rn}</span><small>${Math.round(Math.hypot(R.x, R.y))} m ${DIRS[Math.round(((Math.atan2(R.y, R.x) + 6.28) % 6.28) / (Math.PI / 4)) % 8]} · strength ${Math.round(R.str)} · stockpile ${Math.round(R.stock)}</small>${meter((R.rel + 100) / 2, rc)}</div></div>
+    ${S.rivals.map(R => { const [rn, rc] = relName(R.rel); return `<div class="row" style="display:block"><div class="rl"><span class="ico" style="--c:${R.col}">${R.i}</span><div style="flex:1"><b>${R.n}</b> <span class="chip" style="color:${rc}">${R.dead ? 'Scattered' : rn}</span><small>${Math.round(Math.hypot(R.x, R.y))} m ${DIRS[Math.round(((Math.atan2(R.y, R.x) + 6.28) % 6.28) / (Math.PI / 4)) % 8]} · strength ${Math.round(R.str)} · ${(R.camps || [1]).length} camps · stockpile ${Math.round(R.stock)}</small>${meter((R.rel + 100) / 2, rc)}</div></div>
       ${R.dead ? '' : `<div class="chips" style="margin-top:6px">${btn('🎁 Gift 🥫20', `rivalAct(${R.id},'gift')`)}${btn('🔁 Trade 🔩50', `rivalAct(${R.id},'trade')`)}${R.rel > -30 ? btn('🤝 Pact 🥫15 🔸20', `rivalAct(${R.id},'pact')`) : ''}${btn('😠 Demand tribute', `rivalAct(${R.id},'threat')`)}${btn('⚔️ Raid', `rivalAct(${R.id},'raid')`, !S.robots.length)}</div>`}</div>`; }).join('')}`, rivalSheet);
 }
 function drawRivals(c, P, k, now) {
@@ -3499,7 +3502,7 @@ function towerThumb(type) {
 function buildSheet() {
   const card = k => {
     const d = TOWERS[k], locked = d.unlock && !S.unlocks.includes(d.unlock), afford = canPay(d.cost);
-    return `<button class="bcard ${locked ? 'lock' : ''}" ${locked ? 'disabled' : ''} onclick="setBuild('${k}');closeSheet()"><img src="${towerThumb(k)}"><b>${d.name}</b><small>${locked ? '🔒 Capture a stronghold to unlock' : d.desc}</small><span class="${afford ? '' : 'poor'}">${fmtCost(d.cost)}</span></button>`;
+    return `<button class="bcard ${locked ? 'lock' : ''}" ${locked ? 'disabled' : ''} onclick="setBuild('${k}');closeSheet()"><img src="${towerThumb(k)}"><b>${d.name}</b><small>${locked ? (d.night ? `🔒 Survive ${d.night} nights` : '🔒 Capture a stronghold to unlock') : d.desc}</small><span class="${afford ? '' : 'poor'}">${fmtCost(d.cost)}</span></button>`;
   };
   openSheet(`<h3>🏗️ Build</h3>
     <div class="row"><div class="rl"><span class="ico" style="--c:#4f7d2f">🗺️</span><div>Claim land<small>Take neighboring blocks to build there, occupy houses as bunkhouses and earn more each day</small></div></div>${btn('Expand', 'expandMode(true)')}</div>
@@ -5307,7 +5310,7 @@ zombieThink = (o => (z, dt) => {
       if (l > reach) { z.wob += dt * 3; const s = z.spd * dt * (isNight() ? 1.15 : 1); z.x += (dx / l + Math.cos(z.wob) * .25) * s; z.y += (dy / l + Math.sin(z.wob) * .25) * s; z.ang = Math.atan2(dy, dx); }
       else if ((z.cd -= dt) <= 0) {
         z.cd = d.ranged ? 2 : 1;
-        if (bot) bot.hp -= d.dmg; else { p.hp -= d.dmg * .5; if (d.human) { const pk = p.pile && Object.keys(p.pile).find(r => p.pile[r] >= 1); if (pk) { const n = Math.min(p.pile[pk], 8); p.pile[pk] -= n; z.loot = (z.loot || 0) + n; if (Math.random() < .2) fx.push({ k: 'txt', x: z.x, y: z.y, s: '-' + RES[pk], t: .8 }); } else { const k = pick(['food', 'scrap', 'ammo', 'meds']), n = Math.min(S.res[k], { food: 3, scrap: 8, ammo: 6, meds: .5 }[k]); S.res[k] -= n; z.loot = (z.loot || 0) + n; } } }
+        if (bot) bot.hp -= d.dmg; else { const gs = z.raid != null && S.rivals[z.raid] && S.rivals[z.raid].style; p.hp -= d.dmg * (gs === 'burners' ? 1 : .5); if (d.human) { const pk = p.pile && Object.keys(p.pile).find(r => p.pile[r] >= 1); if (pk) { const n = Math.min(p.pile[pk], 8); p.pile[pk] -= n; z.loot = (z.loot || 0) + n; if (Math.random() < .2) fx.push({ k: 'txt', x: z.x, y: z.y, s: '-' + RES[pk], t: .8 }); } else { const k = pick(['food', 'scrap', 'ammo', 'meds']), n = Math.min(S.res[k], { food: 3, scrap: 8, ammo: 6, meds: .5 }[k]); S.res[k] -= n; z.loot = (z.loot || 0) + n; } } }
         if (d.ranged) fx.push({ k: 'shot', a: { x: z.x, y: z.y, h: 1.5 }, b: { x: tgt.x, y: tgt.y }, t: .3, c: d.human ? '#ffe08a' : '#9ad13a' });
         if (d.human) sfx('pistol', z.x, z.y, .5);
       }
@@ -6061,6 +6064,214 @@ window.soundSheet = () => {
     ${row('amb', '🌆', 'Ambience', 'Wind, the city, the generator hum')}
     ${row('wx', '🌧️', 'Weather', 'Rain, drips and thunder')}`, soundSheet);
 };
+
+// ================= arsenal: speed control, new guns, drone roles, the long case, gangs, combat effects =================
+
+// ---------- 1. speed: one player choice; dialogs and cutscenes pause on top of it, they never overwrite it ----------
+const SP = { v: 1 };
+window.setSpeed = v => { SP.v = v; syncSpd(); };
+function syncSpd() { document.querySelectorAll('#spd button').forEach(b => b.classList.toggle('on', +b.dataset.v === SP.v)); $('spd').classList.toggle('paused', SP.v === 0); }
+const simBusy = () => !!(DLG || CUT.on || OP.on || $('trailer'));
+loopBody = (o => now => { speed = simBusy() ? 0 : SP.v; o(now); })(loopBody);
+addEventListener('keydown', e => { if (!S || !S.cells || /INPUT|TEXTAREA/.test(e.target.tagName) || IV.on) return; if (e.code === 'Space') { e.preventDefault(); SP.last = SP.v || SP.last || 1; setSpeed(SP.v ? 0 : SP.last); } const m = { Digit1: 1, Digit2: 2, Digit3: 4 }[e.code]; if (m) setSpeed(m); });
+
+// ---------- 2. more guns: each has its own way of killing; new ones unlock as nights are survived ----------
+const conePick = (t, z, r, w) => { const a = Math.atan2(z.y - t.y, z.x - t.x); return zombies.filter(o => { const dd = dist(o, t); if (dd > r) return false; let da = Math.atan2(o.y - t.y, o.x - t.x) - a; da = Math.atan2(Math.sin(da), Math.cos(da)); return Math.abs(da) < w; }); };
+const linePick = (t, z, len) => { const a = Math.atan2(z.y - t.y, z.x - t.x), c = Math.cos(a), s = Math.sin(a); return zombies.filter(o => { const dx = o.x - t.x, dy = o.y - t.y, al = dx * c + dy * s; return al > 0 && al < len && Math.abs(dx * s - dy * c) < 3; }); };
+const beam = (t, x, y, col, k = 'shot', dur = .14) => fx.push({ k, a: { x: t.x, y: t.y, h: 2.5 }, b: { x, y }, t: dur, c: col });
+Object.assign(TOWERS, {
+  spikes: { name: 'Spike Strip', icon: '🗡️', look: 'mine', cost: { scrap: 20 }, range: 9, dmg: 9, rate: .5, hp: 220, col: '#a0a0a0', desc: 'Silent. Shreds anything walking over it', fire: (t, z, dmg) => zombies.forEach(o => { if (dist(o, t) < 9) hit(o, dmg, t); }) },
+  cannon: { name: 'Scrap Cannon', icon: '🧨', look: 'mg', cost: { scrap: 55 }, range: 32, dmg: 15, rate: 1.1, ammo: .4, hp: 110, col: '#e0a060', desc: 'Short-range blast that hits everything in a cone', fire: (t, z, dmg) => { conePick(t, z, 32, .5).slice(0, 8).forEach(o => { hit(o, dmg, t); beam(t, o.x, o.y, '#ffc070', 'shot', .1); }); } },
+  harpoon: { name: 'Harpoon Gun', icon: '🏹', look: 'sniper', night: 3, cost: { scrap: 85 }, range: 105, dmg: 42, rate: 2, hp: 80, col: '#c0d8e0', desc: 'Quiet, no ammo. Bolts punch through a whole line', quiet: true, fire: (t, z, dmg) => { linePick(t, z, 105).forEach(o => hit(o, dmg, t)); beam(t, t.x + (z.x - t.x) * 1.6, t.y + (z.y - t.y) * 1.6, '#d8f0ff', 'shot', .2); } },
+  autoc: { name: 'Autocannon', icon: '🔥', look: 'mg', night: 5, cost: { scrap: 125, elec: 2 }, range: 72, dmg: 6, rate: .14, ammo: .08, hp: 130, col: '#ffd060', desc: 'Very fast fire. Eats ammo' },
+  siren: { name: 'Decoy Siren', icon: '📢', look: 'light', night: 6, cost: { scrap: 50, elec: 1 }, range: 95, rate: 3, hp: 170, col: '#ff8060', desc: 'Screams. Pulls the horde away from what matters', fire: t => { zombies.forEach(o => { if (dist(o, t) < 95 && !ZTYPES[o.t].human) { o.lure = { x: t.x, y: t.y }; o.lureT = 4; } }); fx.push({ k: 'ring', x: t.x, y: t.y, r: 40, t: .8 }); } },
+  pylon: { name: 'Repair Pylon', icon: '🛠️', look: 'light', night: 7, cost: { scrap: 90, elec: 3 }, range: 42, power: 1, hp: 90, col: '#80ffc0', desc: 'Slowly mends every structure around it' },
+  acid: { name: 'Acid Sprayer', icon: '🧪', look: 'flamer', night: 8, cost: { scrap: 75, meds: 1 }, range: 46, dmg: 4, rate: .6, fuel: .02, splash: 12, hp: 100, col: '#a0e040', desc: 'Burns and slows everything it touches', fire: (t, z, dmg) => { zombies.forEach(o => { if (dist(o, z) < 12) { hit(o, dmg, t); if (!o.sl) { o.sl = 1; o.spd *= .6; } } }); fx.push({ k: 'flame', a: { x: t.x, y: t.y, h: 2.5 }, b: z, t: .25, c: '#a0e040' }); } },
+  shock: { name: 'Shock Fence', icon: '🌩️', look: 'wall', night: 10, cost: { scrap: 70, elec: 3 }, range: 24, dmg: 6, rate: 1.2, power: 2, hp: 240, col: '#90c0ff', desc: 'Stuns everything in reach for a moment', fire: (t, z, dmg) => { zombies.filter(o => dist(o, t) < 24).slice(0, 12).forEach(o => { hit(o, dmg, t); o.freeze = .8; fx.push({ k: 'zap', a: { x: t.x, y: t.y, h: 1 }, b: o, t: .12 }); }); } },
+  flak: { name: 'Flak Battery', icon: '🎆', look: 'rocket', night: 12, cost: { scrap: 135 }, range: 112, dmg: 13, rate: 1, ammo: .5, splash: 15, hp: 110, col: '#ffb080', desc: 'Bursting shells over a crowd' },
+  rail: { name: 'Railgun', icon: '⚡', look: 'sniper', night: 20, cost: { scrap: 220, elec: 16 }, range: 210, dmg: 150, rate: 4, power: 6, hp: 120, col: '#80e0ff', desc: 'A line of light through everything. Built for tanks', fire: (t, z, dmg) => { const a = Math.atan2(z.y - t.y, z.x - t.x); linePick(t, z, 210).forEach(o => hit(o, dmg, t)); beam(t, t.x + Math.cos(a) * 210, t.y + Math.sin(a) * 210, '#a0f0ff', 'zap', .3); sfx('sniper', t.x, t.y, 1); } },
+});
+for (const [k, d] of Object.entries(TOWERS)) if (d.night) d.unlock = k;
+BUILD_CATS[0][1].push('cannon', 'harpoon', 'autoc', 'acid', 'flak', 'rail');
+BUILD_CATS[1][1].push('spikes', 'shock', 'siren', 'pylon');
+Object.assign(TOWER_H, { spikes: 0, cannon: 1.5, harpoon: 3, autoc: 1.7, siren: 2, pylon: 2, acid: 1.3, shock: .6, flak: 1.7, rail: 3.6 });
+Object.assign(UPGRADES, { arms: { name: 'Gunsmith', desc: '+6% damage for every gun', cost: l => ({ scrap: 130 * (l + 1), ammo: 25 * (l + 1) }), max: 6 } });
+drawTowerTop = (o => (c, x, y, r, t, now, night) => {
+  const d = TOWERS[t.type]; if (!d.look) return o(c, x, y, r, t, now, night);
+  o(c, x, y, r, { ...t, type: d.look }, now, night); if ((t.bp ?? 1) < 1) return;
+  c.save(); c.translate(x, y); c.fillStyle = d.col; c.strokeStyle = '#0008'; c.lineWidth = 1; c.beginPath(); c.arc(0, -r * .35, r * .3, 0, 7); c.fill(); c.stroke();
+  c.font = `${Math.max(8, r * .5) | 0}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(d.icon, 0, -r * .35); c.restore();
+})(drawTowerTop);
+drawTowerSide = (o => (c, sx, sy, k, t, now, night, aim) => { const d = TOWERS[t.type]; o(c, sx, sy, k, d.look ? { ...t, type: d.look } : t, now, night, aim); })(drawTowerSide);
+function arsenalTick() {
+  for (const k in UPGRADES) S.up[k] ??= 0;
+  const nights = S.wave - 1;
+  for (const [k, d] of Object.entries(TOWERS)) if (d.night && nights >= d.night && !S.unlocks.includes(k)) { S.unlocks.push(k); toast(`🔓 New defense: ${d.icon} ${d.name}. Check Build.`); feed('🔓', `Your engineers worked out how to build a ${d.name}`); }
+  if (S.t % 5 === 0) for (const p of S.towers) if (p.type === 'pylon' && (p.bp ?? 1) >= 1) for (const q of S.towers) if (q !== p && dist(p, q) < 42) { const m = TOWERS[q.type].hp * lvlMul(q); if (q.hp < m) { q.hp = Math.min(m, q.hp + 5); if (Math.random() < .1) fx.push({ k: 'txt', x: q.x, y: q.y, s: '✨', t: .5 }); } }
+}
+
+// ---------- 3. drone roles ----------
+const DROLES = {
+  scav: { n: 'Scavenger', i: '🛸', col: '#7cf', night: 0, d: 'Loots shops and homes' },
+  scout: { n: 'Scout', i: '🛰️', col: '#9be15d', night: 0, d: 'Fast. Light cargo, quick trips' },
+  hauler: { n: 'Hauler', i: '📦', col: '#e0b050', night: 0, d: 'Slow. Carries double' },
+  gunship: { n: 'Gunship', i: '🚁', col: '#ff7a5a', night: 4, d: 'Circles the walls and shoots. Uses ammo' },
+  medic: { n: 'Repair', i: '🔧', col: '#80ffc0', night: 7, d: 'Mends damaged guns and outposts. Uses scrap' },
+  bomber: { n: 'Bomber', i: '💣', col: '#d8c26a', night: 12, d: 'Bombs the thickest crowd. Uses ammo' },
+};
+window.setRole = (k, r) => { (S.droneRoles ||= [])[k] = r; if (drones[k]) { drones[k].role = r; if (drones[k].st === 'patrol') drones[k].st = 'back'; } droneSheet(); };
+droneSheet = (o => () => { o(); const nights = S.wave - 1;
+  q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Roles</h4>${drones.map((d, k) => `<div class="row" style="display:block"><b>Drone ${k + 1}</b> <small style="display:inline">${DROLES[d.role || 'scav'].d}</small><div class="chips">${Object.entries(DROLES).map(([r, D]) => nights >= D.night ? `<button class="${(d.role || 'scav') === r ? 'on' : ''}" onclick="setRole(${k},'${r}')">${D.i} ${D.n}</button>` : `<button disabled>🔒 Night ${D.night}</button>`).join('')}</div></div>`).join('')}</div>`); })(droneSheet);
+droneThink = (o => (d, dt) => {
+  d.role = (S.droneRoles || [])[drones.indexOf(d)] || 'scav';
+  if (d.st === 'scav' && d.role === 'hauler' && d.timer <= dt && !d.dbl) d.dbl = true;
+  if (['gunship', 'medic', 'bomber'].includes(d.role) && ['idle', 'patrol'].includes(d.st)) return combatDrone(d, dt);
+  const had = d.cargo; o(d, d.role === 'scout' ? dt * 1.35 : d.role === 'hauler' ? dt * .75 : dt);
+  if (d.cargo && !had && d.dbl && d.cargo.n) { d.cargo.n *= 2; } if (d.st === 'idle') d.dbl = false;
+})(droneThink);
+function combatDrone(d, dt) {
+  if (d.st === 'idle') {
+    d.bat = Math.min(100, (d.bat ?? 100) + 1.6 * dt); d.hp = Math.min(40 + 10 * S.up.drone, d.hp + 4 * dt);
+    const work = d.role === 'medic' ? S.towers.some(t => t.hp < TOWERS[t.type].hp * lvlMul(t) * .8) || plotList(null).some(q => q.p.hp < plotMax(q.p) * .8) : zombies.some(z => Math.hypot(z.x, z.y) < 260 && !z.flee);
+    if (S.auto && work && d.bat > 60) { d.st = 'patrol'; d.t0 = S.t; d.a = rnd(0, 6.28); sfx('drone', 0, 0, .6); }
+    return;
+  }
+  d.bat -= .8 * dt; d.cd = (d.cd || 0) - dt;
+  if (d.bat < 18) { d.st = 'back'; return; }
+  const fly = (tx, ty) => { const dx = tx - d.x, dy = ty - d.y, l = Math.hypot(dx, dy) || 1, s = 32 * dt; if (l > s) { d.x += dx / l * s; d.y += dy / l * s; d.ang = Math.atan2(dy, dx); } };
+  if (d.role === 'gunship') {
+    d.a += dt * .45; const R = wallR() + 25; fly(Math.cos(d.a) * R, Math.sin(d.a) * R);
+    const z = nearestZ(d, 60); if (z && d.cd <= 0 && S.res.ammo > .1) { d.cd = .3; S.res.ammo -= .1; hit(z, 9 + 2 * S.up.drone); d.fired = performance.now(); fx.push({ k: 'shot', a: { x: d.x, y: d.y, h: 15 }, b: z, t: .09, c: '#ffb080' }); sfx('mg', d.x, d.y, .35); }
+    if (!zombies.some(z => Math.hypot(z.x, z.y) < 300)) d.st = 'back';
+  } else if (d.role === 'bomber') {
+    let best = null, bn = 0; for (const z of zombies.slice(0, 80)) { let n = 0; for (const o of zombies) if (dist(o, z) < 24) n++; if (n > bn) { bn = n; best = z; } }
+    if (!best) { d.st = 'back'; return; } fly(best.x, best.y);
+    if (d.cd <= 0 && dist(d, best) < 10 && S.res.ammo >= 2) { d.cd = 2.6; S.res.ammo -= 2; shells.push({ x: d.x, y: d.y, t: .55, dmg: 55 + 8 * S.up.drone, r: 24, src: null }); d.fired = performance.now(); }
+  } else {
+    const hurt = S.towers.filter(t => t.hp < TOWERS[t.type].hp * lvlMul(t) * .9).sort((a, b) => dist(a, d) - dist(b, d))[0] || plotList(null).filter(q => q.p.hp < plotMax(q.p) * .9).sort((a, b) => dist(a, d) - dist(b, d))[0];
+    if (!hurt) { d.st = 'back'; return; } fly(hurt.x, hurt.y);
+    if (dist(d, hurt) < 6 && S.res.scrap > 1) { S.res.scrap -= dt * .6; d.welding = true; if (hurt.p) hurt.p.hp = Math.min(plotMax(hurt.p), hurt.p.hp + dt * 6); else hurt.hp += dt * 6; }
+  }
+}
+function drawDrone(c, dr, x, y, k, now) {
+  const D = DROLES[dr.role || 'scav'], u = Math.max(6, Math.min(14, k * 2.2)), bob = Math.sin(now / 240 + x) * 1.5, a = -(dr.ang || 0);
+  c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x + 2, y + u * 1.1, u * .9, u * .3, 0, 0, 7); c.fill();
+  c.save(); c.translate(x, y + bob);
+  // scanning a building: a searchlight cone sweeps while the timer runs
+  if (dr.st === 'scav') { const sw = Math.sin(now / 300) * .6; c.fillStyle = 'rgba(180,235,255,.16)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.sin(sw - .35) * u * 4, u * 4); c.lineTo(Math.sin(sw + .35) * u * 4, u * 4); c.fill(); c.font = `${u | 0}px system-ui`; c.textAlign = 'center'; c.fillText('🔎', 0, -u * 1.3); }
+  c.strokeStyle = '#2a302a'; c.lineWidth = Math.max(1.5, u * .16); c.beginPath(); for (const [p, q] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.moveTo(0, 0); c.lineTo(p * u * .8, q * u * .8); } c.stroke();
+  for (const [p, q] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { c.strokeStyle = 'rgba(220,240,255,.55)'; c.lineWidth = 1; c.save(); c.translate(p * u * .8, q * u * .8); c.rotate(now / 25 + p); c.beginPath(); c.moveTo(-u * .42, 0); c.lineTo(u * .42, 0); c.stroke(); c.restore(); }
+  c.rotate(a); c.fillStyle = D.col; c.beginPath(); c.ellipse(0, 0, u * .46, u * .32, 0, 0, 7); c.fill(); c.strokeStyle = '#0009'; c.stroke();
+  c.fillStyle = now % 700 < 350 ? '#ff5040' : '#401010'; c.fillRect(-u * .4, -1, 2, 2);
+  if (dr.cargo) { c.fillStyle = '#8a6a3a'; c.fillRect(-u * .28, u * .28, u * .56, u * .4); }
+  if (dr.fired && now - dr.fired < 70) { c.fillStyle = '#ffe9a0'; c.beginPath(); c.arc(u * .6, 0, u * .3, 0, 7); c.fill(); }
+  c.restore();
+  if (dr.welding && Math.random() < .5) { dr.welding = false; VFX.push({ x: dr.wx ?? 0, s: 1, sx: x + rnd(-4, 4), sy: y + u, vx: rnd(-30, 30), vy: rnd(10, 50), t: .3, c: '#ffe080', r: 1.5 }); }
+}
+
+// ---------- 4. effects: blood, dust, muzzle flashes, robots searching ----------
+const VFX = [];
+const part = (wx, wy, o) => { if (VFX.length < 240) VFX.push({ wx, wy, t: .5, r: 1.5, vx: 0, vy: 0, c: '#fff', ...o }); };
+hit = (o => (z, d, s) => { o(z, d, s); if (ZTYPES[z.t].human) part(z.x, z.y, { c: '#c03030', vx: rnd(-20, 20), vy: rnd(-20, 20), t: .3 }); else if (Math.random() < .6) part(z.x, z.y, { c: '#5a1a12', vx: rnd(-22, 22), vy: rnd(-22, 22), t: .35 }); if (z.dead && !z.spl) { z.spl = 1; part(z.x, z.y, { c: 'rgba(70,20,14,.7)', t: 7, r: 4, flat: 1 }); for (let i = 0; i < 6; i++) part(z.x, z.y, { c: '#6a2018', vx: rnd(-40, 40), vy: rnd(-40, 40), t: .5 }); } })(hit);
+function drawVfx(c, P, k, now) {
+  const dt = Math.min(.05, (now - (drawVfx.t || now)) / 1000); drawVfx.t = now;
+  for (let i = VFX.length - 1; i >= 0; i--) { const f = VFX[i]; f.t -= dt; if (f.t <= 0) { VFX.splice(i, 1); continue; } if (f.s) { f.sx += f.vx * dt; f.sy += f.vy * dt; c.fillStyle = f.c; c.fillRect(f.sx, f.sy, 2, 2); continue; } f.wx += f.vx * dt * .3; f.wy += f.vy * dt * .3; const [x, y] = P(f.wx, f.wy); c.globalAlpha = Math.min(1, f.t * 3); c.fillStyle = f.c; c.beginPath(); c.arc(x, y, Math.max(1, f.r * (f.flat ? k * .5 : 1)), 0, 7); c.fill(); c.globalAlpha = 1; }
+  for (const r of S.robots) {
+    const [x, y] = P(r.x, r.y), u = Math.max(4, k * 1.3), moved = Math.hypot(r.x - (r.lx ?? r.x), r.y - (r.ly ?? r.y)); r.lx = r.x; r.ly = r.y;
+    if (moved > .01 && Math.random() < .25 && speed) part(r.x + rnd(-1, 1), r.y + rnd(-1, 1), { c: 'rgba(150,135,110,.45)', r: 2.2, t: .6, vy: 8 });
+    if (r.fired && now - r.fired < 70) { const a = -(r.ang || 0); c.fillStyle = '#ffe9a0'; c.beginPath(); c.arc(x + Math.cos(a) * u * 1.4, y + Math.sin(a) * u * 1.4, u * .55, 0, 7); c.fill(); c.fillStyle = 'rgba(255,200,90,.25)'; c.beginPath(); c.arc(x + Math.cos(a) * u * 1.4, y + Math.sin(a) * u * 1.4, u * 1.4, 0, 7); c.fill(); if (Math.random() < .3) part(r.x, r.y, { c: '#d8b040', vx: rnd(-25, 25), vy: rnd(-25, 25), t: .4, r: 1 }); }
+    if (r.task === 'haul' && r.timer != null && !r.cargo) { const sw = Math.sin(now / 260) * .9; c.fillStyle = 'rgba(255,240,170,.18)'; c.beginPath(); c.moveTo(x, y); c.arc(x, y, u * 4.5, sw - .3, sw + .3); c.fill(); c.font = `${Math.max(10, u * 1.6) | 0}px system-ui`; c.textAlign = 'center'; c.fillText(pick(['🔎', '🔎', '📦'].slice(0, 1)), x, y - u * 2); }
+    if (r.broken && Math.random() < .2) part(r.x, r.y, { c: 'rgba(70,70,70,.6)', r: 3, t: 1, vy: 14 });
+  }
+}
+
+// ---------- 5. gangs: every world has different ones ----------
+const G_ADJ = ['Rust', 'Hollow', 'Ninth', 'Black', 'Red', 'Salt', 'Burnt', 'Iron', 'Silent', 'Last', 'Grim', 'Broken', 'Ash', 'Night', 'Razor', 'Crooked', 'Pale', 'Lucky', 'Dead', 'Copper', 'Mad', 'Wire', 'Cinder', 'Bone'];
+const G_NOUN = ['Dogs', 'Saints', 'Kings', 'Vultures', 'Crows', 'Wolves', 'Choir', 'Union', 'Reapers', 'Rats', 'Hand', 'Mile', 'Boys', 'Sisters', 'Brigade', 'Syndicate', 'Hounds', 'Toll', 'Pilgrims', 'Butchers', 'Riders', 'Jacks', 'Court', 'Tide'];
+const G_SUR = ['Kessler', 'Mercer', 'Duvall', 'Harlan', 'Voss', 'Tanner', 'Crowe', 'Rourke', 'Sable', 'Pike', 'Maddox', 'Ames', 'Vega', 'Lott', 'Boone', 'Thorne', 'Quill', 'Ransom'];
+const G_FIRST = ['Big', 'Old', 'Sister', 'Preacher', 'Doc', 'Mama', 'Captain', 'Little', 'Judge', 'Cousin'];
+const G_ICON = ['💀', '🐺', '🦅', '🔪', '🩸', '☠️', '🐀', '🔥', '⛓️', '🗡️', '🦂', '🐍'];
+const G_STYLE = { looters: 'Looters: they steal twice as much', burners: 'Burners: they wreck outposts fast', hunters: 'Drone hunters: they shoot your drones down', swarm: 'Swarm: bigger, weaker raids' };
+function genGang() {
+  const used = (S.rivals || []).map(R => R.n), sur = pick(G_SUR);
+  for (let i = 0; i < 20; i++) { const n = pick([`The ${pick(G_ADJ)} ${pick(G_NOUN)}`, `The ${sur} ${pick(['Boys', 'Crew', 'Gang', 'Family', 'Brothers'])}`, `${sur}'s ${pick(G_NOUN)}`, `${pick(G_ADJ)} ${pick(['Street', 'Road', 'County', 'Yard'])} ${pick(G_NOUN)}`]); if (!used.includes(n)) return { n, boss: `${pick(G_FIRST)} ${pick(G_SUR)}`, i: pick(G_ICON), style: pick(Object.keys(G_STYLE)), col: pick(['#d0453a', '#c8552a', '#b83a5a', '#c07a2a', '#a04ac0', '#d03a8a']) }; }
+  return { n: 'The Nameless', boss: 'nobody knows', i: '💀', style: 'swarm', col: '#d0453a' };
+}
+const FRIENDLY = [['Co-op', '🌾', '#5aa84a'], ['Mechanics', '🔧', '#e0a83a'], ['Church', '⛪', '#9a7aff'], ['Clinic', '🏥', '#6cc7ff'], ['Farmers', '🥕', '#7ab04a'], ['Convoy', '🚛', '#c9a23a']];
+initRivals = (o => () => { if (S.rivals) return; o(); S.rivals.forEach(R => { if (R.rel <= -5) Object.assign(R, genGang()); else { const f = pick(FRIENDLY); Object.assign(R, { n: `${pick(['Riverside', 'Route ' + (1 + Math.random() * 60 | 0), 'Eastside', 'Northgate', 'Mill Road', 'Harbor', 'Oak Street'])} ${f[0]}`, i: f[1], col: f[2], boss: `${pick(G_FIRST)} ${pick(G_SUR)}` }); } }); })(initRivals);
+initContacts = (o => () => { const had = !!S.contacts; o(); if (!had && S.contacts) for (const c of S.contacts) if (c.kind === 'bandit') { const g = genGang(); c.name = g.n; c.who = g.boss; c.icon = g.i; } })(initContacts);
+function gangTick() {
+  if (!S.rivals || S.wave < 12 || S.gangWave === S.wave || S.wave % 10) return; S.gangWave = S.wave;
+  const live = S.rivals.filter(R => !R.dead); if (live.length >= 5) return;
+  const a = rnd(0, 6.28), x = Math.cos(a) * rnd(380, 600), y = Math.sin(a) * rnd(380, 600), g = genGang(), R = { id: S.rivals.length, ...g, x, y, str: 10 + S.wave * .5, stock: 60, cd: rnd(300, 500), rel: -50 };
+  S.rivals.push(R); toast(`${R.i} A new gang moved in: ${R.n}, led by ${R.boss}`); feed(R.i, `${R.n} arrived from out of town`);
+  radio(R.n, pick(['Heard there was food here.', 'We burned the last place like this. Your turn.', `${R.boss} says hello.`]));
+  cutscene([{ at: { x, y }, z: 15.8, k: 'NEW ARRIVALS', t: `${R.i} ${R.n}`, s: `Led by ${R.boss}. ${G_STYLE[R.style]}.`, d: 3.4 }]);
+}
+rivalSheet = (o => () => { o(); document.querySelectorAll('#sheet .row[style*="block"]').forEach((el, i) => { const R = S.rivals[i]; if (R && R.boss && !R.dead) el.querySelector('small').insertAdjacentHTML('beforeend', `<br>Led by ${R.boss}${R.style ? ' · ' + G_STYLE[R.style] : ''}`); }); })(rivalSheet);
+
+// ---------- 6. the long case: a new file every 10-15 nights survived ----------
+CASE.length = 0;
+CASE.push(
+  { at: 2, via: 'radio', title: 'A voice under the static', who: 'Unknown band, 3.4 MHz', txt: '"…four… seven… Ward Four is sealed. Do not answer the infected if they call you by name. Repeat. Do not answer…"' },
+  { at: 12, via: 'drone', title: 'A keycard in the gutter', txt: 'A drone snagged a lanyard off a body: HARROW BIOTECH · CONTRACTOR · LEVEL 4. The photo has been scratched out.' },
+  { at: 24, via: 'person', title: 'They stopped moving', txt: 'A survivor on watch saw the horde stop all at once and turn the same way. North.', line: 'Last night, on watch. The whole horde just… stopped. All at once. Then every one of them turned north. Like something called them. Nobody else saw it. I know how that sounds.' },
+  { at: 36, via: 'horde', title: 'They all faced north', txt: 'For eleven seconds tonight every infected on the map stood still and faced the same way. Then they came at the wall twice as hard.' },
+  { at: 48, via: 'body', title: 'Tag on a wrist', txt: 'Hospital band on a body at the gate: SPECIMEN 12-B · DO NOT SEDATE. It wasn\'t bitten. It was shot, from the inside of something.' },
+  { at: 60, via: 'radio', title: 'The numbers again', who: 'Unknown band, 3.4 MHz', txt: '"…twelve B is ambulatory. It learned the door codes. If you hear this, the grid is not a quarantine. The grid is the trial."' },
+  { at: 72, via: 'person', title: 'Freezer trucks', txt: 'One of your own drove deliveries for Harrow. Trucks went in full and came out empty, and the drivers wore wristbands.', line: 'I lied about what I did before. I drove for Harrow Biotech. Freezer trucks, every Tuesday. The last week they went in full and came back empty. And they made us wear wristbands. Like the one on that body.' },
+  { at: 85, via: 'drone', title: 'The map with your street on it', txt: 'A drone found a Harrow site map in a burned van. The whole region is cut into numbered squares, sized by census count. Your square is circled: SITE 47. It\'s dated eight months before the outbreak.' },
+  { at: 100, via: 'radio', title: 'The doctor', who: 'Dr. Price, campus lab', txt: '"They didn\'t choose towns. They chose populations: how many people, how dense, how long each would last. You are not surviving in a disaster area. You are a data point in a dosing schedule."' },
+  { at: 115, via: 'body', title: 'The courier\'s roster', txt: 'A dead courier carried a roster of "site commanders", sixty-four names. Yours is on it. It has been crossed out and rewritten eleven times, in different hands.' },
+  { at: 130, via: 'person', title: 'You were there', txt: 'A newcomer swears they\'ve met you, two winters ago, at another stronghold. They saw you die there.', line: 'I wasn\'t going to say anything. Two winters ago I was at a place on the east side. There was a commander. Same voice, same way of standing. I helped bury them. I dug the hole myself. So who are you?' },
+  { at: 145, via: 'horde', title: 'The gap', txt: 'They surrounded the base tonight and did not attack. A perfect ring, with a single gap on the north side, held for eleven seconds. It looked like an invitation.' },
+  { at: 160, via: 'drone', title: 'Ward Four', txt: 'The drone found it. A lit building, undamaged, with no infected for a mile. The sign reads OBSERVATION. On the way back it counted cameras on the utility poles. They run all the way to your gate.' },
+  { at: 175, via: 'radio', title: 'The volunteer', who: 'Recording, dated before the outbreak', txt: '"…state your name for the record." The voice that answers is yours. "I understand the procedure. I understand I won\'t remember consenting. I\'m doing this for the money. It\'s for my family."' },
+  { at: 190, via: 'body', title: 'Subject 0047', txt: 'The wall crew found a body in your boots, with your scar and a year-old bite. The band says SUBJECT 0047 · ITERATION 11. Case 0047 was never the outbreak. Case 0047 is you.' },
+  { at: 205, via: 'person', title: 'Nobody ages', txt: 'Your oldest survivor has been counting. By the calendar they should be years older. They kept every tally.', line: 'I keep a tally. You know I do. Four years by the marks on my arm. Look at my face. Look at yours. Nobody here got any older. How long do you think we\'ve really been doing this?' },
+  { at: 220, via: 'radio', title: 'Twelve-B speaks', who: '??? · 3.4 MHz', txt: '"I am not the sickness. I am what they took out of you, grown in a tank. Every one of them out there hears me. When your wall falls they wake you up and start the clock. North is where it stops."' },
+  { at: 235, via: 'drone', title: 'The reel', txt: 'Harrow footage, hundreds of hours. A commander fortifies a building. It falls. The screen cuts to black, then to the same bunker: DAY 1. Different streets, different faces, the same person waking up.' },
+  { at: 250, via: 'horde', title: 'They knelt', txt: 'Every infected on the map dropped to its knees, facing your gate. Nobody in camp spoke until dawn.' },
+  { at: 265, via: 'radio', title: 'Open the gate', who: '??? · inside your walls', txt: '"Hello? This is your HQ. It\'s me. It\'s you. You got further than any of the others. Open the gate and it ends. Or burn the mast, and find out who\'s watching."', last: true },
+);
+function caseState2() { const cs = S.case ||= { n: 0, found: [] }; if (!cs.v2) { cs.v2 = 1; cs.n = 0; cs.found = []; } return cs; }
+caseState = caseState2;
+caseTick = () => {
+  const cs = caseState2(), c = CASE[cs.n]; if (!c || S.t % 7 || S.wave - 1 < c.at || CUT.on || DLG || S.t < (cs.next || 0)) return;
+  if ((c.via === 'radio' || c.via === 'horde') && !isNight()) return; if (c.via === 'body' && isNight()) return; if (c.via === 'drone' && !drones.length) return;
+  if (Math.random() > .3) return; cs.next = S.t + 120;
+  if (c.via === 'radio') { radio(c.who, c.txt); caseFind(cs.n); }
+  else if (c.via === 'horde') { for (const z of zombies) z.freeze = 11; caseFind(cs.n); }
+  else if (c.via === 'person') { const p = S.people.filter(q => !q.out && !q.quar).sort((a, b) => pTrust(b) - pTrust(a))[0]; if (p && !S.wants) S.wants = { id: p.id, k: 'mystery', until: S.t + 400 }; }
+  else caseFind(cs.n);
+  if (cs.n >= CASE.length && !cs.ended) setTimeout(caseEnding, 7000);
+};
+function caseEnding() {
+  const cs = caseState2(); if (cs.ended) return; if (DLG || CUT.on) return void setTimeout(caseEnding, 3000);
+  DLG = { kind: 'case' };
+  $('dlg').innerHTML = `<div class="dcard cine"><div class="dtop"><div><h3>📁 Case 0047</h3><small>What do you do?</small></div></div><p class="say">The voice is still on the radio. It's still you. Everyone in camp is looking at you.</p>
+    <div class="dopts"><button onclick="caseChoice('open')">🚪 Open the gate<small>Believe it. See what's north.</small></button><button onclick="caseChoice('burn')">🔥 Burn the mast<small>Cut the signal. Make them come and look at you.</small></button><button onclick="caseChoice('hold')">🧱 Keep the gate shut<small>You've come this far on your own terms.</small></button></div></div>`;
+  $('dlg').classList.remove('hide');
+}
+window.caseChoice = k => {
+  const cs = caseState2(); cs.ended = k; $('dlg').classList.add('hide'); DLG = null;
+  if (k === 'open') { zombies.forEach(z => z.flee = true); waveQueue.length = 0; S.camp.mor = 100; cutscene([{ k: 'CASE 0047 · CLOSED', t: 'The gate opened.', s: 'They walked past you, all of them, north. In the morning the streets were empty. Nobody knows for how long.', d: 6 }]); }
+  if (k === 'burn') { give({ scrap: 400, ammo: 300, elec: 40, meds: 20 }); S.unlocks.push(...Object.keys(TOWERS).filter(t => TOWERS[t].unlock && !S.unlocks.includes(TOWERS[t].unlock)).map(t => TOWERS[t].unlock)); for (let i = 0; i < 120; i++) { spawnZombie('surge'); zombies[zombies.length - 1].wave = true; } cutscene([{ k: 'CASE 0047 · CLOSED', t: 'The mast came down.', s: 'The cameras went dark. A Harrow supply cache opened with them. Then the horde stopped listening to anyone.', d: 6 }]); }
+  if (k === 'hold') { S.camp.mor = Math.min(100, S.camp.mor + 25); S.people.forEach(p => { p.mood = Math.min(100, (p.mood ?? 60) + 20); remember(p, 'You kept the gate shut. You chose us'); }); cutscene([{ k: 'CASE 0047 · OPEN', t: 'You kept the gate shut.', s: 'The voice stopped. The siege did not. But for the first time, Day 1 is a long way behind you.', d: 6 }]); }
+  feed('📁', 'Case 0047 ended: ' + k); save();
+};
+window.caseSheet = () => {
+  const cs = caseState2(), nights = S.wave - 1, nx = CASE[cs.n];
+  openSheet(`<h3>📁 Case 0047</h3><p class="explain">Something about this outbreak doesn't add up. A new file surfaces every 10-15 nights you survive: on the radio, in what the drones bring back, at the wall, and from your own people.</p>
+    <div class="row"><div>Files recovered<small>${nx ? `Next lead in about ${Math.max(0, nx.at - nights)} more night${nx.at - nights === 1 ? '' : 's'}` : 'Every file recovered'}</small></div><b>${cs.found.length} / ${CASE.length}</b></div>${meter(cs.found.length / CASE.length * 100, '#9be15d')}
+    ${cs.found.map(f => `<div class="memo"><small>File ${f.i + 1} · Day ${f.d}</small><b>${CASE[f.i].title}</b><br>${f.txt}</div>`).reverse().join('') || '<small style="color:var(--dim)">Nothing yet. Keep the radio on after dark.</small>'}`, caseSheet);
+};
+
+// ---------- 7. polish ----------
+toast = (o => m => { const f = $('toast').firstChild; if (f && (f.dataset.m || f.textContent) === m) { f.dataset.m = m; f.dataset.n = (+f.dataset.n || 1) + 1; f.textContent = `${m} ×${f.dataset.n}`; return; } o(m); })(toast);
+gameOver = (o => () => { o(); const n = S.case ? S.case.found.length : 0; $('over-txt').textContent += ` ${S.people.length} people were still breathing. ${n} of ${CASE.length} case files found.`; })(gameOver);
+worldTick = (o => () => { o(); arsenalTick(); gangTick(); if (S.wave % 7 === 3 && S.whisper !== S.wave && isNight() && CASE[caseState2().n]) { S.whisper = S.wave; radio('Unknown band, 3.4 MHz', pick(['…north…', '…four… seven…', '(static, then someone breathing)', '…day one. day one. day one…', '…is the subject awake?…'])); } })(worldTick);
+
 // ================= radio =================
 function radio(from, msg) {
   sfx('radio');

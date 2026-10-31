@@ -3,6 +3,19 @@
   "site": "https://unaveragetech.github.io/dead-grid/",
   "releases": [
     {
+      "version": "1.5.0",
+      "versionCode": 9,
+      "tag": "v1.5.0",
+      "date": "2026-10-31T18:54:26Z",
+      "apk": "DeadGrid-v1.5.0.apk",
+      "size": 5840493,
+      "sha256": "d06a359eafd52b12548682b1f0d524a98a4c8c6c7347ce4e9ebd56d36ff72af0",
+      "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.5.0",
+      "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.5.0/DeadGrid-v1.5.0.apk",
+      "notes": "## Dead Grid 1.5.0: the long case\n\nAndroid `.apk`, or play in the browser.\n\n### What's new\n- **Case 0047 is now a long story.** 20 case files, one every 10-15 nights survived (the first arrives on night 2), across about 265 nights. It builds to the truth about Harrow, Specimen 12-B and who you really are, and ends with a choice: open the gate, burn the mast, or keep the gate shut.\n- **10 new defenses:** Spike Strip, Scrap Cannon, Harpoon Gun, Autocannon, Decoy Siren, Repair Pylon, Acid Sprayer, Shock Fence, Flak Battery and Railgun. Most unlock as you survive more nights. A new Gunsmith upgrade adds damage to every gun.\n- **Drone roles:** set each drone as a Scavenger, Scout, Hauler, Gunship, Repair or Bomber drone.\n- **Gangs are different every game,** with generated names, leaders and styles (looters, burners, drone hunters, swarms). New gangs can move in during long games. Friendly groups get varied names too.\n- **New animations:** drones with spinning rotors and role colours, search lights on drones and robots searching buildings, muzzle flashes, track dust, blood and splatter.\n\n### Fixes\n- **New speed control:** a clear pause / 1× / 2× / 4× bar above the dock, replacing the old button. On a keyboard, Space pauses and 1, 2, 3 set the speed.\n- **Speed no longer gets lost.** Dialogs and cutscenes pause the game on top of your chosen speed instead of overwriting it.\n- Outposts no longer stay behind on blocks lost to the infection. A standing outpost now takes damage and holds the block.\n- Drone launches use less fuel, and repeated messages stack instead of filling the screen.\n\nSaves from before this version restart the case from file 1.\n\n### Tested\n- In a desktop browser: the speed bar through dialogs and pause, the new guns and drone roles in a simulated siege, the case file delivery and all the ending choices' code paths through one full ending. No script errors.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n",
+      "mirror": "https://unaveragetech.github.io/dead-grid/download/DeadGrid.apk"
+    },
+    {
       "version": "1.4.2",
       "versionCode": 8,
       "tag": "v1.4.2",
@@ -12,8 +25,7 @@
       "sha256": "21ade07215fdc475f1c342405c5a3427fd7a5c7199135ecfa25f46603902536f",
       "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.4.2",
       "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.4.2/DeadGrid-v1.4.2.apk",
-      "notes": "## Dead Grid 1.4.2: play in your browser\n\nAndroid `.apk` only. Or play in the browser, on any device.\n\n### What's new\n- **Play in the browser** at https://unaveragetech.github.io/dead-grid/play/: the full game with every feature, on iPhone, iPad, PC, Mac or Android, with no download. It's the exact same build as the Android app and updates with every release.\n- **Install it like an app.** On iPhone or iPad, tap Share → Add to Home Screen. On Android or desktop, use the browser's Install option. It gets its own icon, runs full screen, and keeps working offline once loaded.\n- **Self-updating.** The browser version checks for new releases. When one is out, a \"Reload to update\" button appears, and your save stays put.\n- On wide screens the panels stay a readable width instead of stretching across the window.\n\n### Fixes\n- The website now has a Play button in the header and on the home page, alongside the Android download.\n\n### Tested\n- Ran the browser version at phone and desktop sizes: the start screen, the map, panels, the bunker and the About panel all work. The offline service worker registers.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n",
-      "mirror": "https://unaveragetech.github.io/dead-grid/download/DeadGrid.apk"
+      "notes": "## Dead Grid 1.4.2: play in your browser\n\nAndroid `.apk` only. Or play in the browser, on any device.\n\n### What's new\n- **Play in the browser** at https://unaveragetech.github.io/dead-grid/play/: the full game with every feature, on iPhone, iPad, PC, Mac or Android, with no download. It's the exact same build as the Android app and updates with every release.\n- **Install it like an app.** On iPhone or iPad, tap Share → Add to Home Screen. On Android or desktop, use the browser's Install option. It gets its own icon, runs full screen, and keeps working offline once loaded.\n- **Self-updating.** The browser version checks for new releases. When one is out, a \"Reload to update\" button appears, and your save stays put.\n- On wide screens the panels stay a readable width instead of stretching across the window.\n\n### Fixes\n- The website now has a Play button in the header and on the home page, alongside the Android download.\n\n### Tested\n- Ran the browser version at phone and desktop sizes: the start screen, the map, panels, the bunker and the About panel all work. The offline service worker registers.\n- The APK built, signed with the pinned key and passed the version check. It has not been run on a physical phone.\n"
     },
     {
       "version": "1.4.1",

@@ -1,12 +1,12 @@
 {
-  "version": "1.4.2",
-  "versionCode": 8,
-  "tag": "v1.4.2",
-  "date": "2026-10-29T20:59:09Z",
-  "apk": "DeadGrid-v1.4.2.apk",
-  "size": 5829474,
-  "sha256": "21ade07215fdc475f1c342405c5a3427fd7a5c7199135ecfa25f46603902536f",
-  "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.4.2",
-  "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.4.2/DeadGrid-v1.4.2.apk",
+  "version": "1.5.0",
+  "versionCode": 9,
+  "tag": "v1.5.0",
+  "date": "2026-10-31T18:54:26Z",
+  "apk": "DeadGrid-v1.5.0.apk",
+  "size": 5840493,
+  "sha256": "d06a359eafd52b12548682b1f0d524a98a4c8c6c7347ce4e9ebd56d36ff72af0",
+  "url": "https://github.com/unaveragetech/dead-grid/releases/tag/v1.5.0",
+  "download": "https://github.com/unaveragetech/dead-grid/releases/download/v1.5.0/DeadGrid-v1.5.0.apk",
   "mirror": "https://unaveragetech.github.io/dead-grid/download/DeadGrid.apk"
 }
