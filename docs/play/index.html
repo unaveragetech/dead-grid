@@ -373,7 +373,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
 const $ = id => document.getElementById(id);
@@ -456,7 +456,7 @@ const neighbors = (i, j) => [[1,0],[-1,0],[0,1],[0,-1]].map(([a,b]) => [i+a, j+b
 const held = () => Object.values(S.cells).filter(c => c.c).length;
 const isNight = () => (S.clock % DAY) > DAY * .62;
 const maxHp = () => 400 + 150 * S.up.armor;
-const survCap = () => 12 + 8 * S.up.housing + (S && S.occ ? S.occ.reduce((a, o) => a + o.bunks, 0) : 0) + plotCap('bunks');
+const survCap = () => 12 + 8 * S.up.housing + (S && S.occ ? S.occ.reduce((a, o) => a + o.bunks, 0) : 0) + plotCap('bunks') + tentCap();
 const robotCap = () => 2 * S.up.factory + plotCap('works');
 const powerCap = () => 10 + 15 * S.up.power + S.towers.filter(t => t.type === 'gen').reduce((a, t) => a + TOWERS.gen.gen * t.lvl, 0);
 const powerUse = () => S.towers.reduce((a, t) => a + (TOWERS[t.type].power || 0) * t.lvl, 0) + S.robots.length;
@@ -746,7 +746,7 @@ function towerSheet(t) {
   const rep = { scrap: Math.ceil((d.hp * lvlMul(t) - t.hp) / 6 * (1 - .06 * S.up.work)) };
   const i = S.towers.indexOf(t);
   openSheet(`<h3>${d.icon} ${d.name} · Lv ${t.lvl}</h3>
-    <div class="row"><div>Integrity<small>${t.hp / (d.hp * lvlMul(t)) < .4 && d.rate ? '⚠️ Below 40% this gun JAMS. Repair it.' : 'Rust and wear wear it down over time. Engineers repair it with 🔩'}</small></div><b>${Math.round(t.hp / (d.hp * lvlMul(t)) * 100)}%</b></div>
+    <div class="row"><div>Integrity<small>${t.hp / (d.hp * lvlMul(t)) < .4 && d.rate ? '⚠️ Below 40% this gun JAMS. Repair it.' : d.home ? 'Only damaged if something reaches it. Engineers repair it with 🔩' : 'Rust and wear wear it down over time. Engineers repair it with 🔩'}</small></div><b>${Math.round(t.hp / (d.hp * lvlMul(t)) * 100)}%</b></div>
     ${t.type === 'well' ? `<div class="row"><div>Water quality<small>${(t.dirt || 0) > .6 ? '🦠 Contaminated: output falls and people get sick' : 'Silt and algae build up, faster in rain. Sanitation crews and engineers clean it'}</small>${meter(100 - (t.dirt || 0) * 100, (t.dirt || 0) > .6 ? '#9ad13a' : '#6cc7ff')}</div>${btn('Scrub 🔩8', `cleanWell(${i})`)}</div>` : ''}
     ${d.dmg ? `<div class="row"><div>Damage · Range</div><b>${Math.round(d.dmg * lvlMul(t) * dmgMul())} · ${Math.round(d.range * (1 + .1 * (t.lvl - 1)))}m</b></div>` : ''}
     ${t.kills ? `<div class="row"><div>Kills</div><b>${t.kills}</b></div>` : ''}
@@ -1408,7 +1408,7 @@ function fixJobs() {
   for (const k of ['guard', 'mech', 'clean', 'medic', 'scav', 'farm', 'water', 'wallc']) while (tot > able && J[k] > 0) { J[k]--; tot--; }
 }
 const idle = () => Math.max(0, S.surv - S.camp.sick - Object.values(S.camp.jobs).reduce((a, b) => a + b, 0));
-const resCap = k => (k === 'scrap' || k === 'ammo' ? 600 : k === 'elec' ? 80 : 240) * (1 + .5 * (S.up.storage || 0)) + depotCap(k);
+const resCap = k => (k === 'scrap' || k === 'ammo' ? 600 : k === 'elec' ? 80 : 240) * (1 + .5 * (S.up.storage || 0)) + depotCap(k) + shedCap(k);
 let RATE = {};
 function campTick() {
   const C = S.camp, J = C.jobs, n = S.surv, sea = season();
@@ -2789,7 +2789,7 @@ function waterTick() {
 // Everything rusts. Engineers (and you) patch it up with scrap.
 function upkeepTick() {
   const wet = S.camp.wx === 'rain' || S.camp.wx === 'snow' ? 2 : 1;
-  for (const t of S.towers) if (t.type !== 'mine') t.hp -= TOWERS[t.type].hp * lvlMul(t) * .00025 * wet;
+  for (const t of S.towers) if (t.type !== 'mine' && !TOWERS[t.type].home) t.hp -= TOWERS[t.type].hp * lvlMul(t) * .00025 * wet;
   const eng = S.people.filter(p => p.role === 'mech');
   let budget = .6 + eng.reduce((a, p) => a + (p.trait === 'tinker' ? 5 : 2.5), 0) * skillMul('mech');
   S.fixing = [];
@@ -3037,6 +3037,7 @@ function moreSheet() {
   const tile = (i, l, f, sub) => `<button class="tile" onclick="${f}"><b>${i}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
   openSheet(`<h3>☰ Command</h3><div class="tiles">
     ${tile('🏠', 'Base', 'baseSheet()', 'Upgrades')}
+    ${tile('🌱', 'Homestead', 'homesteadSheet()', homeOf('bed').length + ' beds')}
     ${tile('🎒', 'Stockpile', 'invSheet()', 'Inventory')}
     ${tile('🔸', 'Armory', 'armorySheet()', 'Craft')}
     ${tile('🤖', 'Robots', 'robotSheet()', S.robots.length + '/' + robotCap())}
@@ -3518,7 +3519,7 @@ function placeCheck(type, p) {
   const land = inGrid(i, j) && (cell(i, j).c || (outer && neighbors(i, j).some(([a, b]) => cell(a, b).c)));
   const why = !land ? (outer ? 'Must be on your land or one block beyond it' : 'Must be on your land (green blocks)')
     : hqB && inPoly(x, y, hqB.poly) ? 'That\'s the HQ' : Math.hypot(x, y) < 6 ? 'Too close to the HQ'
-    : S.towers.some(t => dist(t, { x, y }) < (type === 'wall' || type === 'pipe' ? 3.5 : 6.5)) ? 'Too close to another structure'
+    : S.towers.some(t => dist(t, { x, y }) < (type === 'wall' || type === 'pipe' ? 3.5 : d.small && TOWERS[t.type].home ? 2.5 : d.home && TOWERS[t.type].home ? 4 : 6.5)) ? 'Too close to another structure'
     : type !== 'pipe' && buildings.some(b => b.kind !== 'shed' && inPoly(x, y, b.poly)) ? 'Can\'t build inside a building'
     : !canPay(d.cost) ? 'Not enough supplies (' + fmtCost(d.cost) + ')' : '';
   return { type, x, y, rot, ok: !why, why, near: type === 'wall' && Math.abs(Math.hypot(x, y) - wallRAt(Math.atan2(y, x)) - 3.4) < .5 };
@@ -3532,7 +3533,7 @@ window.placeGhost = () => {
   const g = ghost; if (!g || !g.ok || !pay(TOWERS[g.type].cost)) return;
   const quick = g.type === 'pipe' || g.type === 'mine';
   S.towers.push({ type: g.type, x: g.x, y: g.y, hp: TOWERS[g.type].hp * (quick ? 1 : .3), lvl: 1, cd: 0, rot: g.rot, bp: quick ? 1 : 0 });
-  noise(g.x, g.y, 90, 4); sfx('build', g.x, g.y); fx.push({ k: 'ring', x: g.x, y: g.y, r: 40, t: 1 });
+  if (TOWERS[g.type].home) sfx('pickup', g.x, g.y, .4); else { noise(g.x, g.y, 90, 4); sfx('build', g.x, g.y); } fx.push({ k: 'ring', x: g.x, y: g.y, r: TOWERS[g.type].home ? 8 : 40, t: 1 });
   if (!quick) toast(`🔨 ${TOWERS[g.type].name} queued. Your crew is building it`);
   ghost = null; showGhostBar();
 };
@@ -3733,7 +3734,7 @@ function alertList() {
   if (S.res.ammo < 60 && S.towers.some(t => TOWERS[t.type].ammo)) add(90, '🔸', 'Ammo low: press rounds', 'armorySheet()');
   const mins = k => (RATE[k] || 0) < -.05 ? S.res[k] / -RATE[k] : 99;
   if (S.res.water < 10 || mins('water') < 4) add(86, '💧', 'Water running out', 'buildSheet()');
-  if (S.res.food < 10 || mins('food') < 4) add(85, '🥫', 'Food running out', "survTab('jobs')");
+  if (S.res.food < 10 || mins('food') < 4) add(85, '🥫', 'Food running out', 'homesteadSheet()');
   if (S.hp < maxHp() * .5) add(80, '🏠', 'HQ badly damaged', 'wallSheet()');
   const jam = S.towers.filter(t => TOWERS[t.type].rate && (t.bp ?? 1) >= 1 && t.hp / (TOWERS[t.type].hp * lvlMul(t)) < .4).length; if (jam) add(76, '🔧', `${jam} gun${jam > 1 ? 's' : ''} jamming: assign an engineer`, "survTab('jobs')");
   if (drones.some(d => d.st === 'down') && !S.robots.some(r => !r.broken)) add(62, '🛸', 'Drone down, no robot to fetch it', 'robotSheet()');
@@ -5294,7 +5295,7 @@ function plotTick() {
 // farmland: farmers beyond what your fields can hold work at a third of the speed
 const _campTick = campTick;
 campTick = () => {
-  const J = S.camp.jobs, room = 2 + 2 * plotList('farm').length, extra = Math.max(0, (J.farm || 0) - room);
+  const J = S.camp.jobs, room = farmRoom(), extra = Math.max(0, (J.farm || 0) - room);
   if (extra) S.res.food -= extra * .065 * .66 * (.55 + S.camp.mor / 220);
   _campTick();
 };
@@ -5624,7 +5625,7 @@ alertList = (o => () => {
   if (hit) A.push({ pri: 84, icon: '🚨', text: `${PLOTS[hit.p.type].n} under attack`, act: `map.setView(toLL(${hit.x},${hit.y}),17.5)` });
   const lost = plotList(null, false).find(q => q.p.hp <= 0 && q.p.bp >= 1); if (lost) A.push({ pri: 64, icon: '🔥', text: `${PLOTS[lost.p.type].n} overrun`, act: `cellSheet(${lost.k})` });
   const idleF = plotList('farm').find(q => q.p.idle); if (idleF) A.push({ pri: 40, icon: '🌾', text: 'Field has no farmer', act: "survTab('jobs')" });
-  if ((S.camp.jobs.farm || 0) > 2 + 2 * plotList('farm').length) A.push({ pri: 44, icon: '🌾', text: 'Farmers need more fields', act: 'expandMode(true)' });
+  if ((S.camp.jobs.farm || 0) > farmRoom()) A.push({ pri: 44, icon: '🌾', text: 'Farmers need more beds or fields', act: 'homesteadSheet()' });
   return A.sort((a, b) => b.pri - a.pri).slice(0, 3);
 })(alertList);
 
@@ -6271,6 +6272,133 @@ window.caseSheet = () => {
 toast = (o => m => { const f = $('toast').firstChild; if (f && (f.dataset.m || f.textContent) === m) { f.dataset.m = m; f.dataset.n = (+f.dataset.n || 1) + 1; f.textContent = `${m} ×${f.dataset.n}`; return; } o(m); })(toast);
 gameOver = (o => () => { o(); const n = S.case ? S.case.found.length : 0; $('over-txt').textContent += ` ${S.people.length} people were still breathing. ${n} of ${CASE.length} case files found.`; })(gameOver);
 worldTick = (o => () => { o(); arsenalTick(); gangTick(); if (S.wave % 7 === 3 && S.whisper !== S.wave && isNight() && CASE[caseState2().n]) { S.whisper = S.wave; radio('Unknown band, 3.4 MHz', pick(['…north…', '…four… seven…', '(static, then someone breathing)', '…day one. day one. day one…', '…is the subject awake?…'])); } })(worldTick);
+
+
+// ================= homestead: crops you plant by hand, scarecrows, and the small things that make a base a home =================
+const CROPS = {
+  potato: { n: 'Potatoes', i: '🥔', t: 150, y: { food: 5 }, thirst: 1, col: '#6f9a3c', ripe: '#c9a860', d: 'Reliable all-rounder' },
+  beans: { n: 'Beans', i: '🫘', t: 100, y: { food: 3 }, thirst: .8, col: '#4f9a4a', ripe: '#8fc060', d: 'Quick, small harvests' },
+  corn: { n: 'Corn', i: '🌽', t: 260, y: { food: 11 }, thirst: 2, col: '#7fae3a', ripe: '#ecc94a', d: 'Big yield, slow and thirsty' },
+  kale: { n: 'Kale', i: '🥬', t: 170, y: { food: 3 }, thirst: .7, col: '#2f7a4a', ripe: '#5ab06a', winter: true, d: 'The only crop that grows in winter' },
+  herbs: { n: 'Herbs', i: '🌿', t: 240, y: { meds: 1 }, thirst: 1, col: '#5a9a7a', ripe: '#a0e0b0', d: 'Slowly makes 💊 medicine' },
+};
+const inAura = (t, type, r) => S.towers.some(q => q.type === type && (q.bp ?? 1) >= 1 && dist(q, t) < r);
+const shade = (c, n, f) => { c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0, n * .9, n * .9 * f, n * .28, 0, 0, 7); c.fill(); };
+const HOME = {
+  bed: { name: 'Crop bed', icon: '🌱', cost: { scrap: 18, water: 2 }, hp: 30, col: '#7a5a34', desc: 'Plant potatoes, corn, beans, kale or herbs',
+    draw(c, r, t, now) {
+      const C = CROPS[t.crop || 'potato'], g = t.grow ?? .8, w = r * 1.5, h = r * 1.05;
+      c.fillStyle = '#4a3320'; c.fillRect(-w, -h, w * 2, h * 2); c.strokeStyle = '#7a5a34'; c.lineWidth = Math.max(1, r * .14); c.strokeRect(-w, -h, w * 2, h * 2);
+      for (let n = 0; n < 3; n++) { const y = -h + (n + .5) * h * 2 / 3; c.strokeStyle = '#3a2616'; c.lineWidth = 1; c.beginPath(); c.moveTo(-w + 2, y + 2); c.lineTo(w - 2, y + 2); c.stroke();
+        for (let m = 0; m < 5; m++) { const x = -w + (m + .5) * w * 2 / 5, s = Math.max(.6, r * .1 + r * .34 * g), sway = Math.sin(now / 700 + m + n) * s * .15;
+          c.fillStyle = t.dry ? '#8a7a4a' : C.col; c.beginPath(); c.ellipse(x + sway, y - s * .3, s * .55, s, 0, 0, 7); c.fill();
+          if (g >= 1) { c.fillStyle = C.ripe; c.beginPath(); c.arc(x + sway, y - s * .6, Math.max(1, s * .38), 0, 7); c.fill(); } } }
+      if (g >= 1) { c.font = `${Math.max(9, r * .8) | 0}px system-ui`; c.textAlign = 'center'; c.fillText(C.i, 0, -h - r * .3); }
+      if (t.crow > (S ? S.t : 0)) { const a = now / 180; c.fillStyle = '#111'; c.font = `${Math.max(9, r * .7) | 0}px system-ui`; c.textAlign = 'center'; c.fillText('🐦‍⬛', Math.cos(a) * w * .7, Math.sin(a) * h * .6 - r * .3); }
+    } },
+  scare: { name: 'Scarecrow', icon: '🎃', cost: { scrap: 10, food: 1 }, range: 30, hp: 40, col: '#c9a23a', desc: 'Keeps crows off every bed within 30 m',
+    draw(c, r, t, now) { shade(c, r, .7); const s = Math.sin(now / 600 + t.x) * .08; c.rotate(s); c.strokeStyle = '#5a4128'; c.lineWidth = Math.max(1.5, r * .18); c.beginPath(); c.moveTo(0, r * .9); c.lineTo(0, -r * 1.3); c.moveTo(-r, -r * .6); c.lineTo(r, -r * .6); c.stroke();
+      c.fillStyle = '#6a4a6a'; c.fillRect(-r * .42, -r * .75, r * .84, r * .95); c.fillStyle = '#c9a050'; c.fillRect(-r * .95, -r * .68, r * .25, r * .16); c.fillRect(r * .7, -r * .68, r * .25, r * .16);
+      c.fillStyle = '#d8a050'; c.beginPath(); c.arc(0, -r * 1.15, r * .34, 0, 7); c.fill(); c.fillStyle = '#2a2018'; c.fillRect(-r * .5, -r * 1.42, r, r * .1); c.fillRect(-r * .26, -r * 1.75, r * .52, r * .35); c.fillStyle = '#111'; c.fillRect(-r * .15, -r * 1.2, r * .08, r * .08); c.fillRect(r * .07, -r * 1.2, r * .08, r * .08); } },
+  compost: { name: 'Compost heap', icon: '🪱', cost: { scrap: 25 }, range: 30, hp: 50, col: '#6a4a2a', desc: 'Beds within 30 m grow 30% faster and recover their soil. Eats corpses',
+    draw(c, r, t, now) { shade(c, r, 1); c.fillStyle = '#3f2c18'; c.beginPath(); c.ellipse(0, 0, r * 1.05, r * .75, 0, 0, 7); c.fill(); c.fillStyle = '#5a4020'; c.beginPath(); c.ellipse(-r * .2, -r * .2, r * .6, r * .4, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(220,220,200,.25)'; const y = -r * .7 - (now / 90 % (r * 1.2)); c.beginPath(); c.arc(r * .1, y, r * .2, 0, 7); c.fill(); } },
+  coop: { name: 'Chicken coop', icon: '🐔', cost: { scrap: 60, food: 6 }, hp: 60, col: '#b08a50', desc: 'Eggs every day: a small, steady supply of food. Needs a little water',
+    draw(c, r, t, now) { shade(c, r, 1.2); c.fillStyle = '#8a6a3a'; c.fillRect(-r, -r * .6, r * 2, r * 1.2); c.fillStyle = '#6a2f22'; c.beginPath(); c.moveTo(-r * 1.2, -r * .6); c.lineTo(0, -r * 1.4); c.lineTo(r * 1.2, -r * .6); c.fill(); c.fillStyle = '#222'; c.fillRect(-r * .2, -r * .1, r * .4, r * .7);
+      for (let i = 0; i < 3; i++) { const a = now / 900 + i * 2.1 + t.x; c.fillStyle = '#efe6d0'; c.beginPath(); c.arc(Math.cos(a) * r * 1.4, r * .85 + Math.sin(a * 1.4) * r * .25, Math.max(1, r * .14), 0, 7); c.fill(); } } },
+  smoke: { name: 'Smokehouse', icon: '🍖', cost: { scrap: 70, fuel: 2 }, hp: 90, col: '#6a4a3a', desc: 'Cuts spoiled food in half and adds 60 food storage',
+    draw(c, r, t, now) { shade(c, r, 1); c.fillStyle = '#5a4030'; c.fillRect(-r * .8, -r * 1.1, r * 1.6, r * 1.8); c.fillStyle = '#332218'; c.beginPath(); c.moveTo(-r, -r * 1.1); c.lineTo(0, -r * 1.7); c.lineTo(r, -r * 1.1); c.fill(); for (let i = 0; i < 3; i++) { const f = (now / 1500 + i / 3) % 1; c.fillStyle = `rgba(200,200,190,${.3 * (1 - f)})`; c.beginPath(); c.arc(f * r * .5, -r * 1.7 - f * r * 1.6, r * (.15 + f * .3), 0, 7); c.fill(); } } },
+  kitchen: { name: 'Field kitchen', icon: '🍲', cost: { scrap: 65, food: 4 }, hp: 70, col: '#a06a3a', desc: 'Hot meals. Lifts morale all day',
+    draw(c, r, t, now) { shade(c, r, 1.2); c.fillStyle = '#50604a'; c.beginPath(); c.moveTo(-r * 1.2, -r * .4); c.lineTo(0, -r * 1.2); c.lineTo(r * 1.2, -r * .4); c.fill(); c.fillStyle = '#333'; c.beginPath(); c.arc(0, r * .2, r * .5, 0, 7); c.fill(); c.fillStyle = '#ff9a3d'; c.beginPath(); c.arc(0, r * .55, r * (.18 + .04 * Math.sin(now / 90)), 0, 7); c.fill(); } },
+  fire: { name: 'Campfire', icon: '🔥', small: 1, cost: { scrap: 12 }, hp: 30, col: '#ff9a3d', desc: 'People gather here after dark. Lifts morale at night',
+    draw(c, r, t, now, night) { if (night) { c.fillStyle = 'rgba(255,160,70,.16)'; c.beginPath(); c.arc(0, 0, r * 3.4, 0, 7); c.fill(); } c.fillStyle = '#555'; for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28; c.beginPath(); c.arc(Math.cos(a) * r * .7, Math.sin(a) * r * .5, r * .16, 0, 7); c.fill(); } const f = 1 + .15 * Math.sin(now / 70 + t.x); c.fillStyle = '#ff7a2a'; c.beginPath(); c.ellipse(0, -r * .15, r * .34 * f, r * .55 * f, 0, 0, 7); c.fill(); c.fillStyle = '#ffd86a'; c.beginPath(); c.ellipse(0, -r * .05, r * .16, r * .28 * f, 0, 0, 7); c.fill(); } },
+  barrel: { name: 'Rain barrel', icon: '🛢️', small: 1, cost: { scrap: 20 }, hp: 30, col: '#3a6a8a', desc: 'Catches water whenever it rains',
+    draw(c, r) { shade(c, r * .7, 1); c.fillStyle = '#3a5a6a'; c.fillRect(-r * .55, -r * .8, r * 1.1, r * 1.5); c.strokeStyle = '#223'; c.lineWidth = 1; c.strokeRect(-r * .55, -r * .35, r * 1.1, r * .5); c.fillStyle = S && S.camp && S.camp.wx === 'rain' ? '#8ac8e8' : '#26404c'; c.beginPath(); c.ellipse(0, -r * .8, r * .55, r * .2, 0, 0, 7); c.fill(); } },
+  tent: { name: 'Tent', icon: '⛺', cost: { scrap: 30, food: 2 }, hp: 40, col: '#7a8a5a', desc: '+2 beds, right here in the yard',
+    draw(c, r) { shade(c, r, 1.1); c.fillStyle = '#6a7a4a'; c.beginPath(); c.moveTo(-r * 1.1, r * .6); c.lineTo(0, -r); c.lineTo(r * 1.1, r * .6); c.fill(); c.fillStyle = '#26301a'; c.beginPath(); c.moveTo(-r * .3, r * .6); c.lineTo(0, -r * .3); c.lineTo(r * .3, r * .6); c.fill(); } },
+  crate: { name: 'Storage shed', icon: '📦', cost: { scrap: 35 }, hp: 70, col: '#8a6a3a', desc: '+30 storage for every supply',
+    draw(c, r) { shade(c, r, 1); c.fillStyle = '#8a6a3a'; c.fillRect(-r * .9, -r * .7, r * 1.1, r * 1.2); c.fillStyle = '#7a5a30'; c.fillRect(-r * .1, -r * .2, r * 1, r * .8); c.fillStyle = '#6a4a28'; c.fillRect(-r * .5, -r * 1.2, r * .9, r * .6); c.strokeStyle = '#2a1e12'; c.lineWidth = 1; c.strokeRect(-r * .9, -r * .7, r * 1.1, r * 1.2); c.strokeRect(-r * .1, -r * .2, r, r * .8); } },
+  wash: { name: 'Washstand', icon: '🧼', small: 1, cost: { scrap: 15, water: 3 }, hp: 25, col: '#6a8aa0', desc: 'Keeps the camp a little cleaner. Uses water',
+    draw(c, r) { c.fillStyle = '#6a5038'; c.fillRect(-r * .6, -r * .1, r * 1.2, r * .7); c.fillStyle = '#b8c8d0'; c.beginPath(); c.ellipse(0, -r * .2, r * .55, r * .25, 0, 0, 7); c.fill(); } },
+  bench: { name: 'Bench', icon: '🪑', small: 1, cost: { scrap: 8 }, hp: 20, col: '#8a6a40', desc: 'Somewhere to sit. A small morale boost',
+    draw(c, r) { c.fillStyle = '#8a6a40'; c.fillRect(-r, -r * .2, r * 2, r * .3); c.fillStyle = '#5a4128'; c.fillRect(-r * .85, r * .1, r * .16, r * .4); c.fillRect(r * .7, r * .1, r * .16, r * .4); c.fillRect(-r, -r * .6, r * 2, r * .14); } },
+  flowers: { name: 'Flower pot', icon: '🌼', small: 1, cost: { scrap: 4, water: 1 }, hp: 10, col: '#e0c040', desc: 'Pointless. People love it',
+    draw(c, r, t, now) { c.fillStyle = '#a0583a'; c.fillRect(-r * .4, 0, r * .8, r * .55); const cols = ['#e8c040', '#e06a8a', '#e8e8e8', '#a080e0']; for (let i = 0; i < 4; i++) { c.fillStyle = cols[((t.x | 0) + i) & 3]; c.beginPath(); c.arc(-r * .3 + i * r * .2, -r * .15 - (i % 2) * r * .2 + Math.sin(now / 800 + i) * r * .04, r * .15, 0, 7); c.fill(); } } },
+};
+for (const [k, d] of Object.entries(HOME)) { TOWERS[k] = { ...d, home: 1 }; TOWER_H[k] = 0; }
+BUILD_CATS.unshift(['Farm & food', ['bed', 'scare', 'compost', 'coop', 'smoke', 'kitchen']], ['Home comforts', ['fire', 'tent', 'crate', 'barrel', 'wash', 'bench', 'flowers']]);
+drawTowerTop = (o => (c, x, y, r, t, now, night) => {
+  const d = TOWERS[t.type]; if (!d.home) return o(c, x, y, r, t, now, night);
+  c.save(); c.translate(x, y); if ((t.bp ?? 1) < 1) { const s = r * .7; c.fillStyle = '#4a3a24'; c.fillRect(-s, -s * .6, s * 2, s * 1.2); c.strokeStyle = '#a08050'; c.setLineDash([3, 3]); c.strokeRect(-s, -s * .6, s * 2, s * 1.2); c.setLineDash([]); c.fillStyle = '#ffb340'; c.fillRect(-s, s * .75, s * 2 * t.bp, 2); } else d.draw(c, r, t, now, night); c.restore();
+})(drawTowerTop);
+function homeOf(type) { return S && S.towers ? S.towers.filter(t => t.type === type && (t.bp ?? 1) >= 1) : []; }
+function tentCap() { return homeOf('tent').length * 2; }
+function shedCap(k) { return homeOf('crate').length * 30 + (k === 'food' ? homeOf('smoke').length * 60 : 0); }
+function farmRoom() { return 2 + 2 * plotList('farm').length + Math.ceil(homeOf('bed').length / 2); }
+// a bed's chance of each thing, once a second
+function growMul(t, C) { const sea = season(); if (sea === 3 && !C.winter) return 0; return (sea === 3 ? .6 : sea === 1 ? 1.15 : 1) * (S.camp.wx === 'rain' ? 1.2 : 1) * (inAura(t, 'compost', 30) ? 1.3 : 1); }
+function harvest(t, by) {
+  const C = CROPS[t.crop || 'potato'], m = lvlMul(t) * (t.soil ?? 1), got = {}; for (const [k, v] of Object.entries(C.y)) { const n = k === 'meds' ? v : Math.max(1, Math.round(v * m)); if (S.res[k] + n > resCap(k)) { t.full = true; return false; } got[k] = n; }
+  t.full = false; give(got); t.grow = 0; t.soil = Math.max(.6, (t.soil ?? 1) - (t.last === t.crop ? .08 : 0)); t.last = t.crop; S.harvests = (S.harvests || 0) + 1;
+  fx.push({ k: 'txt', x: t.x, y: t.y, s: '+' + fmtCost(got), t: 1.3 }); sfx('pickup', t.x, t.y, .35); if (by) { const p = S.people.find(q => q.id === by); if (p) p.mood = Math.min(100, (p.mood ?? 60) + 1); } return true;
+}
+window.harvestBed = i => { const t = S.towers[i]; if (t && (t.grow ?? 0) >= 1) { if (!harvest(t)) toast('📦 Storage is full'); towerSheet(t); } };
+window.plantBed = (i, c) => { const t = S.towers[i]; if (!t) return; t.crop = c; t.grow = 0; t.dry = false; towerSheet(t); };
+window.harvestAll = () => { let n = 0; homeOf('bed').forEach(t => { if ((t.grow ?? 0) >= 1 && harvest(t)) n++; }); toast(n ? `🧺 Harvested ${n} bed${n > 1 ? 's' : ''}` : 'Nothing ripe yet'); homesteadSheet(); };
+function homesteadTick() {
+  const beds = homeOf('bed'), J = S.camp.jobs, hands = (J.farm || 0) + S.robots.filter(r => r.type === 'harv' && !r.broken).length, cap = hands * 3; S.bedHands = cap;
+  beds.forEach((t, n) => {
+    t.crop ||= 'potato'; t.grow ??= 0; t.tended = n < cap; const C = CROPS[t.crop];
+    if (t.grow >= 1) { if (t.tended && S.t % 6 === n % 6 && !isNight()) harvest(t, (S.people.find(p => p.role === 'farm') || {}).id); return; }
+    const need = .004 * C.thirst; t.dry = S.res.water < need + .5; if (t.dry) return; const m = growMul(t, C); t.frozen = m === 0; if (!m) return;
+    S.res.water -= need; t.grow = Math.min(1, t.grow + m * (t.tended ? 1 : .35) / C.t);
+    if (t.grow > .15 && !inAura(t, 'scare', 30) && Math.random() < .0022) { t.grow = Math.max(0, t.grow - .3); t.crow = S.t + 6; S.crowT = S.t; if (S.t - (S.crowMsg ?? -999) > 90) { S.crowMsg = S.t; toast(`🐦‍⬛ Crows are eating your ${C.n.toLowerCase()}. Build a scarecrow.`); feed('🐦‍⬛', `Crows got into the ${C.n.toLowerCase()}`); } }
+    if (inAura(t, 'compost', 30) && (t.soil ?? 1) < 1) t.soil = Math.min(1, t.soil + .0008);
+  });
+  const C = S.camp; const nFire = homeOf('fire').length, nKit = homeOf('kitchen').length;
+  for (const t of homeOf('coop')) if (S.res.water > 1) { S.res.water -= .002; S.res.food += .022 * lvlMul(t); if (S.t % 90 === 0) fx.push({ k: 'txt', x: t.x, y: t.y, s: '🥚', t: 1.2 }); }
+  for (const t of homeOf('barrel')) if (C.wx === 'rain') S.res.water += .06;
+  if (homeOf('compost').length && C.corpses > 0) C.corpses = Math.max(0, C.corpses - .01 * homeOf('compost').length);
+  for (const t of homeOf('wash')) if (S.res.water > 2 && C.hyg < 96) { S.res.water -= .004; C.hyg += .008; }
+  C.mor += Math.min(.02, nKit * .008) + (isNight() ? Math.min(.012, nFire * .006) : 0) + Math.min(.012, (homeOf('bench').length + homeOf('flowers').length) * .0015);
+  C.mor = Math.min(100, C.mor);
+}
+spoilTick = (o => () => { const f = S.res.food; o(); if (homeOf('smoke').length) S.res.food += (f - S.res.food) * .5; })(spoilTick);
+towerSheet = (o => t => {
+  o(t); if (t.type !== 'bed') return; const i = S.towers.indexOf(t), C = CROPS[t.crop || 'potato'], g = t.grow ?? 0, h = q$('#sheet h3'), m = growMul(t, C);
+  const st = g >= 1 ? (t.full ? '📦 Ripe, but storage is full' : t.tended ? '🧺 Ripe. A farmer is on the way' : '🧺 Ripe. Nobody is assigned to pick it') : t.dry ? '🥀 Wilting: out of water' : !m ? '❄️ Frozen. Only kale grows in winter' : `Growing · about ${Math.ceil((1 - g) * C.t / (m * (t.tended ? 1 : .35)))}s${t.tended ? '' : ' · <b style="color:var(--amb)">no farmer, growing slowly</b>'}`;
+  h.insertAdjacentHTML('afterend', `<div class="row" style="display:block"><b>${C.i} ${C.n}</b><small>${st}</small>${meter(g * 100, g >= 1 ? '#ecc94a' : '#9be15d')}
+    <small>Soil ${Math.round((t.soil ?? 1) * 100)}%${(t.soil ?? 1) < 1 ? ' · rotate crops or add compost to restore it' : ''} · ${inAura(t, 'scare', 30) ? '🎃 Scarecrow watching' : '<span style="color:var(--amb)">No scarecrow: crows will come</span>'}${inAura(t, 'compost', 30) ? ' · 🪱 Composted' : ''}</small>
+    ${g >= 1 ? `<div class="chips">${btn('🧺 Harvest now', `harvestBed(${i})`)}</div>` : ''}<h4>Plant</h4><div class="chips">${Object.entries(CROPS).map(([k, c]) => `<button class="${t.crop === k ? 'on' : ''}" onclick="plantBed(${i},'${k}')">${c.i} ${c.n}</button>`).join('')}</div><small>${C.d}. Replanting starts the bed over.</small></div>`);
+})(towerSheet);
+window.homesteadSheet = () => {
+  const beds = homeOf('bed'), ripe = beds.filter(t => t.grow >= 1).length, dry = beds.filter(t => t.dry).length, un = beds.filter(t => !t.tended).length, nos = beds.filter(t => !inAura(t, 'scare', 30)).length;
+  const perMin = beds.reduce((a, t) => { const C = CROPS[t.crop || 'potato']; return a + (C.y.food || 0) * lvlMul(t) * (t.soil ?? 1) * growMul(t, C) * (t.tended ? 1 : .35) / C.t * 60; }, 0) + homeOf('coop').reduce((a, t) => a + .022 * lvlMul(t) * 60, 0);
+  const by = Object.entries(CROPS).map(([k, c]) => { const n = beds.filter(t => (t.crop || 'potato') === k).length; return n ? `${c.i} ${n}` : ''; }).join(' ');
+  openSheet(`<h3>🌱 Homestead</h3><p class="explain">Place crop beds on your land, pick what grows in each, and keep them watered. One farmer or Harvester can tend 3 beds. Crows go after any bed without a scarecrow nearby, and planting the same crop over and over wears out the soil.</p>
+    <div class="row"><div>Crop beds<small>${by || 'None yet'}</small></div><b>${beds.length}</b></div>
+    <div class="row"><div>Food from the homestead<small>Estimate at the current season and weather</small></div><b>${RES.food} ${perMin.toFixed(1)}/min</b></div>
+    <div class="row"><div>Hands<small>${S.bedHands} beds can be tended${un ? ` · <b style="color:var(--amb)">${un} untended</b>` : ''}</small></div>${btn('Jobs', "survTab('jobs')")}</div>
+    ${dry ? `<div class="row"><div>🥀 ${dry} bed${dry > 1 ? 's' : ''} wilting<small>Out of water</small></div></div>` : ''}${nos && beds.length ? `<div class="row"><div>🐦‍⬛ ${nos} bed${nos > 1 ? 's' : ''} exposed to crows</div>${btn('🎃 Build', "setBuild('scare');closeSheet()")}</div>` : ''}
+    <div class="row"><div>🧺 ${ripe} ready to pick<small>${S.harvests || 0} harvests so far</small></div>${btn('Harvest all', 'harvestAll()', !ripe)}</div>
+    <div class="chips">${btn('🌱 Place a bed', "setBuild('bed');closeSheet()")}${btn('🏗️ All buildings', 'buildSheet()')}</div>`, homesteadSheet);
+};
+// farmers walk out to the beds; after dark people drift to the fire
+chooseAct = (o => p => {
+  const a = o(p), beds = homeOf('bed');
+  if (a.act === 'work' && p.role === 'farm' && beds.length && !isNight()) { const t = beds[(p.id + (S.t / 25 | 0)) % beds.length]; return { act: 'work', icon: t.grow >= 1 ? '🧺' : '🌱', ...freeSpot(t.x + rnd(-2, 2), t.y + rnd(-2, 2)) }; }
+  if (isNight() && ['hobby', 'sit', 'idle'].includes(a.act)) { const f = homeOf('fire'); if (f.length && Math.random() < .7) { const t = pick(f), g = rnd(0, 6.28); return { ...a, act: 'hobby', icon: '🔥', ...freeSpot(t.x + Math.cos(g) * 3.5, t.y + Math.sin(g) * 3.5) }; } }
+  if (['hobby', 'sit'].includes(a.act) && Math.random() < .4) { const b = [...homeOf('bench'), ...homeOf('kitchen')]; if (b.length) { const t = pick(b); return { ...a, ...freeSpot(t.x + rnd(-1.5, 1.5), t.y + 1.5) }; } }
+  return a;
+})(chooseAct);
+// lay out rows: small things and beds stay in build mode after placing
+window.placeGhost = (o => () => { const ty = ghost && ghost.type, keep = ty && TOWERS[ty].home; o(); if (keep && canPay(TOWERS[ty].cost)) { setBuild(ty); toast(`${TOWERS[ty].icon} Placed. Tap to place another, or ✕ when done.`); } })(window.placeGhost);
+alertList = (o => () => { const A = o(), b = homeOf('bed');
+  const ripe = b.filter(t => t.grow >= 1 && !t.tended).length; if (ripe) A.push({ pri: 47, icon: '🧺', text: `${ripe} bed${ripe > 1 ? 's' : ''} ready to pick`, act: 'homesteadSheet()' });
+  if (b.some(t => t.dry)) A.push({ pri: 72, icon: '🥀', text: 'Crops wilting', act: 'homesteadSheet()' });
+  if (!b.length && (S.res.food < 25 || S.t > 300)) A.push({ pri: 50, icon: '🌱', text: 'Plant some crops', act: 'homesteadSheet()' });
+  if (b.length >= 2 && !homeOf('scare').length && S.crowT && S.t - S.crowT < 60) A.push({ pri: 52, icon: '🎃', text: 'Crows in the crops', act: "setBuild('scare')" });
+  return A.sort((x, y) => y.pri - x.pri).slice(0, 3); })(alertList);
+worldTick = (o => () => { o(); homesteadTick(); })(worldTick);
 
 // ================= radio =================
 function radio(from, msg) {
