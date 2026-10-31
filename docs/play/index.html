@@ -136,6 +136,27 @@ body.inside #radar{bottom:auto;top:calc(env(safe-area-inset-top) + 82px)}
 @media (min-width:900px){#sheet{left:calc(50% - 300px)!important;right:calc(50% - 300px)!important}}
 #spd{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:510;display:flex;gap:2px;padding:3px;background:#11150fe6;border:1px solid #3d4a35;border-radius:12px;box-shadow:0 4px 14px #0008}
 #spd.hide,body.inside #spd{display:none}#spd button{min-width:44px;min-height:34px;padding:0 8px;font:700 13px system-ui;background:none;border:0;box-shadow:none;color:var(--dim);border-radius:9px}#spd button.on{background:#9be15d;color:#10140c}#spd.paused button.on{background:#ffb340}
+
+/* ---- grit: worn metal, rust, stencil, grime ---- */
+:root{--panel:#1a1712f2;--line:#3a3226;--txt:#e6dfcc;--dim:#9a9078;--acc:#b5c94a;--amb:#d99a34;--red:#d6452f}
+html,body{font-family:'Trebuchet MS','Segoe UI',Roboto,sans-serif}
+body::after{content:'';position:fixed;inset:0;z-index:1400;pointer-events:none;background:var(--grime),radial-gradient(ellipse at center,transparent 45%,rgba(14,8,2,.5));background-size:256px,100% 100%}
+#map{filter:saturate(.3) brightness(.56) contrast(1.2) sepia(.42) hue-rotate(-8deg)!important}
+h1,h3,h4,#ph-t,#start h1,#over h1,.ct,.ck{font-family:Impact,Haettenschweiler,'Arial Narrow Bold','Roboto Condensed',sans-serif!important;font-weight:400!important;letter-spacing:.06em;text-transform:uppercase}
+#start h1{font-size:50px;color:#c9c0a4;text-shadow:2px 2px 0 #5a2418,0 0 18px #000}#over h1{color:var(--red)}
+button{background:var(--grime),linear-gradient(#4a4333,#29251b)!important;border:1px solid #5a5040!important;border-bottom-color:#100d08!important;border-radius:3px!important;box-shadow:0 2px 0 #0a0805,inset 0 1px 0 #ffffff14!important;color:var(--txt)}
+button.on{background:var(--grime),linear-gradient(#c2c95a,#7f8a2c)!important;color:#171a06!important;border-color:#d8e070!important}
+#sheet{background:var(--grime),linear-gradient(#211d16f8,#14110cf8)!important;border-top:3px solid #6a5a3a!important;border-radius:0!important}
+#sheet::before{content:'';display:block;height:7px;margin:-1px 0 4px;background:repeating-linear-gradient(135deg,#c9a23a 0 10px,#17140e 10px 20px);opacity:.7}
+#sheet h4{display:inline-block;background:#c9c0a42e;color:#d8cfae;padding:1px 8px;transform:rotate(-.6deg);border-left:3px solid #9a4a2a;border-bottom:0}
+.row,.memo,.bcard,.tile,.upd{background-image:var(--grime)!important;background-color:#ffffff06;border-color:#3f3628!important;border-radius:3px!important}
+#phase,#vitals,#spd,.res,#bot,#alerts button,#obj,#noise{background-image:var(--grime),linear-gradient(#2a241af0,#16130df0)!important;border-color:#5a4c34!important;border-radius:4px!important}
+.dcard.cine{background:var(--grime),radial-gradient(120% 80% at 50% 0%,#2a2318 0%,#0d0a06 72%)!important;border-color:#5a4c34!important;border-radius:2px!important}
+#about-body{background:var(--grime),#15120c!important;border-radius:3px!important;border-color:#5a4c34!important}
+#start{background-image:var(--grime),radial-gradient(ellipse at 50% 20%,#2a2214,#0b0906)!important}
+.persona,.lifebox .row{border-radius:3px!important}
+.perk{display:inline-block;font:700 11px system-ui;padding:2px 7px;background:#c9a23a;color:#1a1408;border-radius:2px;transform:rotate(-1deg)}
+.facestrip{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.facestrip img{width:38px;height:38px;border:1px solid #5a4c34}
 #trailer{position:fixed;inset:0;z-index:2000;background:#000;display:flex;align-items:center;justify-content:center}
 #trailer video{width:100%;height:100%;object-fit:contain;background:#000}
 #tr-skip{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 14px);background:#000a;border-color:#fff4;box-shadow:none}
@@ -373,7 +394,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.7.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
 const $ = id => document.getElementById(id);
@@ -1223,7 +1244,7 @@ function loopBody(now) {
   });
   zombies = zombies.filter(z => !z.gone);
   const before = zombies.length;
-  zombies = zombies.filter(z => { if (z.hp <= 0) { sfx('splat', z.x, z.y); if (z.t === 'bandit') { S.res.ammo += 4; S.res.scrap += 6; } if (Math.hypot(z.x, z.y) < 60) S.camp.corpses += .1; fx.push({ k: 'blood', x: z.x, y: z.y, t: 2, ht: ZTYPES[z.t].h }); if (Math.random() < .25) S.res.scrap += 2; return false; } return true; });
+  zombies = zombies.filter(z => { if (z.hp <= 0) { sfx('splat', z.x, z.y); if (z.who) raiderDied(z); if (z.t === 'bandit') { S.res.ammo += 4; S.res.scrap += 6; } if (Math.hypot(z.x, z.y) < 60) S.camp.corpses += .1; fx.push({ k: 'blood', x: z.x, y: z.y, t: 2, ht: ZTYPES[z.t].h }); if (Math.random() < .25) S.res.scrap += 2; return false; } return true; });
   S.kills += before - zombies.length;
   S.towers = S.towers.filter(t => { if (t.hp <= 0) { if (t.type !== 'mine') toast(TOWERS[t.type].name + ' destroyed'); return false; } return true; });
   S.robots = S.robots.filter(r => { if (r.hp <= 0) { toast(`💥 ${ROBOTS[r.type].name} destroyed`); fx.push({ k: 'boom', x: r.x, y: r.y, r: 10, t: .5 }); return false; } return true; });
@@ -3422,7 +3443,7 @@ function rivalTick() {
     R.cd = rnd(140, 240);
     if (R.rel <= -30 && !(S.peace && S.peace['r' + R.id] > S.wave)) {
       if (isNight() && Math.random() < .6) {
-        spawnBandits(R.x, R.y, 2 + Math.round(R.str / 8), R.n); const i = segAt(R.x, R.y);
+        if (R.folk) launchRaid(R, true); else spawnBandits(R.x, R.y, 2 + Math.round(R.str / 8), R.n); const i = segAt(R.x, R.y);
         for (let n = 0; n < 6; n++) setTimeout(() => sfx('pistol', Math.cos((i + .5) * SEG_A) * 40, Math.sin((i + .5) * SEG_A) * 40, .7), n * 200);
         radio(R.n, pick(['Nice walls. Shame about the gate.', 'Those streets are ours. Stay off them.', 'Next time we come for the pantry.']));
         if (S.wall.segs[i] <= 0) { const s = Math.round(S.res.scrap * .15), f = Math.round(S.res.food * .15); S.res.scrap -= s; S.res.food -= f; toast(`🔥 ${R.n} slipped through the breach and stole 🔩${s} 🥫${f}`); }
@@ -5409,7 +5430,7 @@ function campTickR() {
     if (R.dead) continue;
     R.camps ||= [{ id: 0, x: R.x, y: R.y, hp: 300, max: 300, n: 'their compound', main: true }];
     // camps lost to robots
-    for (const c of R.camps) if (c.hp <= 0 && !c.looted) { c.looted = true; const g = { scrap: 60 + R.stock / 3 | 0, ammo: 30, food: 10 + R.stock / 5 | 0 }; give(g); R.stock *= .6; R.str = Math.max(1, R.str - 4); R.rel = -90; toast(`🔥 Camp at ${c.n} destroyed. Took ${fmtCost(g)}`); feed('🔥', `Robots burned the ${R.n} camp at ${c.n}`); cutscene([{ at: { x: c.x, y: c.y }, z: 17, k: 'CAMP DESTROYED', t: `${R.n} lost ${c.n}`, s: `Recovered ${fmtCost(g)}`, d: 2.6 }]); }
+    for (const c of R.camps) if (c.hp <= 0 && !c.looted) { c.looted = true; if (R.folk) { R.folk = R.folk.filter(f => f.camp !== c.id || f.away); R.b = (R.b || []).filter(b => b.c !== c.id); R.folk.forEach(f => { if (!R.camps.some(q => q.id === f.camp && q.hp > 0)) { const q = R.camps.find(q => q.hp > 0); if (q) f.camp = q.id; } }); if (Math.random() < .5 && S.surv < survCap()) { S.surv++; syncPeople(); const pr = S.people[S.people.length - 1]; if (pr) { pr.bio = 'ex-raider'; pr.mood = 30; toast(`🏳️ ${pr.name} surrendered at ${c.n} and joined you`); } } } const g = { scrap: 60 + R.stock / 3 | 0, ammo: 30, food: 10 + R.stock / 5 | 0 }; give(g); R.stock *= .6; R.str = Math.max(1, R.str - 4); R.rel = -90; toast(`🔥 Camp at ${c.n} destroyed. Took ${fmtCost(g)}`); feed('🔥', `Robots burned the ${R.n} camp at ${c.n}`); cutscene([{ at: { x: c.x, y: c.y }, z: 17, k: 'CAMP DESTROYED', t: `${R.n} lost ${c.n}`, s: `Recovered ${fmtCost(g)}`, d: 2.6 }]); }
     R.camps = R.camps.filter(c => c.hp > 0);
     if (!R.camps.length) { R.dead = true; toast(`${R.i} ${R.n} has scattered. Their streets are yours.`); feed('🏳️', `${R.n} scattered`); continue; }
     if (R.rel > -30) continue;
@@ -5450,7 +5471,7 @@ window.campSheet = (rid, cid) => {
   openSheet(`<h3>${R.i} ${R.n}: ${c.n}</h3>
     <p class="explain">${c.main ? 'Their main compound.' : 'A forward camp.'} Bandit camps scavenge the streets around them, grow stronger, and send raiders at your softest outpost. Destroy every camp and the group scatters for good.</p>
     <div class="row"><div>Standing<small>${Math.round(Math.hypot(c.x, c.y))} m from your HQ</small></div><b style="color:${rc}">${rn}</b></div>
-    <div class="row"><div>Fortifications</div>${meter(c.hp / c.max * 100, '#d0453a')}</div>
+    <div class="row"><div>Fortifications</div><b>${Math.round(c.hp)} / ${c.max}</b></div>
     <div class="row"><div>Group strength<small>${R.camps.length} camp${R.camps.length > 1 ? 's' : ''} · stockpile ${Math.round(R.stock)}</small></div><b>${Math.round(R.str)}</b></div>
     <div class="row"><div>Assault with robots<small>${bots.length} combat robots available. Defenders shoot back. Damaged units retreat on their own.</small></div>${btn('⚔️ Attack', `sendCamp(${rid},${cid})`, !bots.length)}</div>
     <div class="row"><div>Talk instead<small>Gifts, trade and pacts</small></div>${btn('⚑ Rivals', 'rivalSheet()')}</div>`, () => campSheet(rid, cid));
@@ -6399,6 +6420,179 @@ alertList = (o => () => { const A = o(), b = homeOf('bed');
   if (b.length >= 2 && !homeOf('scare').length && S.crowT && S.t - S.crowT < 60) A.push({ pri: 52, icon: '🎃', text: 'Crows in the crops', act: "setBuild('scare')" });
   return A.sort((x, y) => y.pri - x.pri).slice(0, 3); })(alertList);
 worldTick = (o => () => { o(); homesteadTick(); })(worldTick);
+
+
+// ================= grit: a worn look, bespoke people, raider compounds, lives that change =================
+
+// ---------- 1. the look: a generated film of grime and scratches over everything, stencilled worn-metal UI ----------
+(function grime() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d');
+  for (let i = 0; i < 2600; i++) { const v = Math.random() < .5 ? 0 : 255; g.fillStyle = `rgba(${v},${v},${v},${Math.random() * .05})`; g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 1.4, 1 + Math.random() * 1.4); }
+  for (let i = 0; i < 16; i++) { g.strokeStyle = `rgba(230,220,190,${.02 + Math.random() * .05})`; g.lineWidth = .6; g.beginPath(); const x = Math.random() * 256, y = Math.random() * 256; g.moveTo(x, y); g.lineTo(x + rnd(-40, 40), y + rnd(-90, 90)); g.stroke(); }
+  for (let i = 0; i < 9; i++) { const x = Math.random() * 256, y = Math.random() * 256, r = 10 + Math.random() * 34, gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, 'rgba(40,24,10,.11)'); gr.addColorStop(1, 'rgba(40,24,10,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  document.documentElement.style.setProperty('--grime', `url(${cv.toDataURL()})`);
+})();
+
+// ---------- 2. bespoke bodies: build, coat, scarf and pack, on the map and in the bunker ----------
+const COATS = ['#4a4030', '#3a4438', '#54392c', '#2e3640', '#5a5a48', '#3c2e38', '#6a5230', '#2a2a2a', '#50603a', '#70402c'];
+const SCARF = ['#a33a2a', '#c9a23a', '#3a6a7a', '#7a4a8a', '#d8d0b8', '#4f7d2f'];
+function bodyOf(L) { if (L.bw == null) { L.bw = Math.random() * 3 | 0; L.coat = Math.random() < .6 ? COATS[Math.random() * COATS.length | 0] : null; L.scarf = Math.random() < .3 ? SCARF[Math.random() * SCARF.length | 0] : null; L.bag ??= Math.random() < .4; L.tall = .9 + Math.random() * .22; } return L; }
+drawPersonTop = (c, x, y, r0, L, ang, gun) => {
+  bodyOf(L); const r = r0 * L.tall, a = -(ang || 0), w = r * [.82, 1, 1.25][L.bw], top = L.coat || SHIRT[L.sh || 0];
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x + r * .35, y + r * .4, w * 1.05, r * .75, 0, 0, 7); c.fill();
+  c.save(); c.translate(x, y); c.rotate(a);
+  if (L.bag) { c.fillStyle = '#4a3626'; c.fillRect(-r * .95, -r * .5, r * .6, r); }
+  c.fillStyle = top; c.beginPath(); c.ellipse(0, 0, r * .72, w, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = Math.max(.6, r * .1); c.stroke();
+  if (L.coat) { c.strokeStyle = SHIRT[L.sh || 0]; c.lineWidth = Math.max(.6, r * .18); c.beginPath(); c.moveTo(r * .55, -w * .35); c.lineTo(r * .55, w * .35); c.stroke(); }
+  if (L.gang) { c.fillStyle = L.gang; c.fillRect(-r * .3, -w * 1.02, r * .6, r * .3); }
+  if (L.scarf) { c.fillStyle = L.scarf; c.beginPath(); c.ellipse(0, 0, r * .42, r * .55, 0, 0, 7); c.fill(); }
+  if (gun) { c.strokeStyle = '#111'; c.lineWidth = Math.max(1, r * .28); c.beginPath(); c.moveTo(r * .3, w * .4); c.lineTo(r * 2, w * .3); c.stroke(); }
+  const hx = L.hx ?? L.hs ?? 0, bald = hx === 6; c.fillStyle = SKIN[L.sk || 0]; c.beginPath(); c.arc(r * .08, 0, r * .46, 0, 7); c.fill();
+  if (L.hat === 'cap') { c.fillStyle = SHIRT[((L.sh || 0) + 3) % SHIRT.length]; c.beginPath(); c.arc(0, 0, r * .48, 0, 7); c.fill(); c.fillRect(r * .3, -r * .22, r * .45, r * .44); }
+  else if (L.hat === 'beanie') { c.fillStyle = ['#7a2a24', '#3a4a5a', '#5a5a3a'][(L.sh || 0) % 3]; c.beginPath(); c.arc(0, 0, r * .5, 0, 7); c.fill(); }
+  else if (L.hat === 'hood') { c.fillStyle = shadeHex(top, .75); c.beginPath(); c.arc(-r * .05, 0, r * .56, 0, 7); c.fill(); }
+  else if (!bald) { c.fillStyle = HAIR[L.hc || 0]; c.beginPath(); if (hx === 1) c.arc(-r * .14, 0, r * .55, 0, 7); else if (hx === 4) { c.rect(-r * .45, -r * .1, r * .9, r * .2); } else if (hx === 5) { c.arc(-r * .05, 0, r * .42, 0, 7); c.arc(-r * .4, 0, r * .2, 0, 7); } else c.arc(-r * .08, 0, r * .42, 0, 7); c.fill(); if (L.hat === 'band') { c.strokeStyle = L.gang || '#a33'; c.lineWidth = Math.max(.8, r * .14); c.beginPath(); c.arc(0, 0, r * .42, 0, 7); c.stroke(); } }
+  c.restore();
+};
+drawPersonSide = (c, sx, sy, k, L0, wob, gun, night) => {
+  const L = bodyOf(L0), h = 1.75 * k * L.tall, s = Math.sin(wob || 0), dk = night ? .45 : 1, col = v => shadeHex(v, dk), w = h * [.11, .14, .18][L.bw];
+  c.strokeStyle = col('#2a2a30'); c.lineWidth = Math.max(1, h * .1); c.beginPath(); c.moveTo(sx, sy - h * .45); c.lineTo(sx - s * h * .12, sy); c.moveTo(sx, sy - h * .45); c.lineTo(sx + s * h * .12, sy); c.stroke();
+  c.fillStyle = col(L.coat || SHIRT[L.sh || 0]); c.fillRect(sx - w, sy - h * .82, w * 2, L.coat ? h * .55 : h * .4);
+  if (L.gang) { c.fillStyle = col(L.gang); c.fillRect(sx - w, sy - h * .72, w * 2, h * .07); }
+  if (L.scarf) { c.fillStyle = col(L.scarf); c.fillRect(sx - h * .09, sy - h * .84, h * .18, h * .07); }
+  c.fillStyle = col(SKIN[L.sk || 0]); c.beginPath(); c.arc(sx, sy - h * .9, h * .1, 0, 7); c.fill();
+  c.fillStyle = col(HAIR[L.hc || 0]); c.beginPath(); c.arc(sx, sy - h * .93, h * .1, Math.PI, 0); c.fill();
+  if (gun) { c.strokeStyle = '#111'; c.lineWidth = Math.max(1, h * .06); c.beginPath(); c.moveTo(sx, sy - h * .65); c.lineTo(sx + h * .35, sy - h * .7); c.stroke(); }
+};
+personSprite = (o => (p, now) => {
+  const cv = o(p, now), L = bodyOf(p.look || (p.look = {})); if (p.itask === 'sleep' && !p.iwalk) return cv; const g = cv.getContext('2d'), by = !p.iwalk && (p.itask === 'eat' || p.itask === 'radio') ? 6 : 0;
+  if (L.coat) { g.fillStyle = L.coat; g.fillRect(9, 24 + by, 5, 26); g.fillRect(18, 24 + by, 5, 26); }
+  if (L.bw === 2) { g.fillStyle = L.coat || SHIRT[L.sh || 0]; g.fillRect(8, 26 + by, 2, 16); g.fillRect(22, 26 + by, 2, 16); }
+  if (L.scarf) { g.fillStyle = L.scarf; g.fillRect(12, 20 + by, 8, 4); }
+  if (L.bd) { g.fillStyle = HAIR[L.hc || 0]; g.fillRect(12, 18 + by, 8, 3); }
+  if (L.gl) { g.strokeStyle = '#ddd'; g.lineWidth = .7; g.strokeRect(12, 14 + by, 3.5, 2.6); g.strokeRect(16.5, 14 + by, 3.5, 2.6); }
+  if (L.mk) { g.fillStyle = '#3a3a3a'; g.fillRect(11, 17 + by, 10, 4); }
+  if (L.hat === 'band') { g.fillStyle = '#a03030'; g.fillRect(10, 10 + by, 12, 2); } else if (L.hat === 'hood') { g.strokeStyle = L.coat || SHIRT[L.sh || 0]; g.lineWidth = 2; g.beginPath(); g.arc(16, 14 + by, 7, Math.PI * .8, Math.PI * 2.2); g.stroke(); }
+  return cv;
+})(personSprite);
+drawZombieTop = (o => (c, x, y, s, z, night) => { if (z.t === 'bandit' && z.who) return drawPersonTop(c, x, y, Math.max(3, s * 1.2), z.who.look, z.ang, true); o(c, x, y, s, z, night); })(drawZombieTop);
+
+// ---------- 3. raiders are people in another compound: they gather, build, recruit, expand, and above all attack ----------
+const RAIDER_FIRST = ['Dutch', 'Rook', 'Sal', 'Mags', 'Tully', 'Knox', 'Vera', 'Cass', 'Bram', 'Odell', 'Juno', 'Pike', 'Lowe', 'Ness', 'Dray', 'Fitch', 'Hale', 'Ines', 'Jett', 'Kira', 'Mace', 'Nola', 'Reno', 'Skye', 'Tate', 'Wick', 'Zed', 'Ash', 'Bo', 'Cruz'];
+let folkId = 9000;
+function newFolk(R) {
+  const f = { id: ++folkId, name: pick(RAIDER_FIRST) + ' ' + pick(G_SUR), look: {}, role: Math.random() < .6 ? 'fight' : 'scav', seed: Math.random() * 100 };
+  const hostile = R.rel <= -30; identity(f); bodyOf(f.look); if (hostile) { f.look.gang = R.col; f.look.mk = Math.random() < .45; if (Math.random() < .5) f.look.hat = 'band'; f.look.sc = Math.random() < .5 ? Math.random() * 3 | 0 : -1; f.mood = 25; }
+  f.camp = R.camps && R.camps.length ? pick(R.camps).id : 0; return f;
+}
+function gangInit(R) {
+  if (R.folk) return; R.camps ||= [{ id: 0, x: R.x, y: R.y, hp: 300, max: 300, n: 'their compound', main: true }];
+  R.folk = []; const n = 5 + Math.round(R.str / 3); for (let i = 0; i < n; i++) R.folk.push(newFolk(R));
+  R.stock = Math.min(R.stock ?? 40, 80); R.b = [{ t: 'tent', c: 0, a: 1 }, { t: 'tent', c: 0, a: 3 }, { t: 'pile', c: 0, a: 5 }]; R.econ = rnd(0, 5);
+}
+const fighters = R => R.folk.filter(f => f.role === 'fight' && !f.away);
+function gangAI(R) {
+  gangInit(R); R.raidT = 1e9; if (R.dead) return;
+  for (const f of R.folk) if (f.away && !zombies.some(z => z.who === f)) f.away = false; // a raid in progress isn't saved
+  const here = R.folk.filter(f => !f.away), scav = here.filter(f => f.role === 'scav').length, tents = R.b.filter(b => b.t === 'tent').length, towers = R.b.filter(b => b.t === 'tower').length, farms = R.b.filter(b => b.t === 'farm').length, hostile = R.rel <= -30;
+  // they're worse at this than you: little income, waste, no machines
+  R.stock += scav * (hostile ? .16 : .22) + farms * .2 + rnd(0, .2); R.stock -= R.folk.length * .07; R.stock = Math.min(R.stock, 90 + R.camps.length * 40); R.str = R.folk.length * 1.1 + towers * 2; const popCap = Math.min(30, 7 + dayNo() * .9 + R.camps.length), walls = R.b.filter(b => b.t === 'wall').length;
+  if (R.stock <= 0) { R.stock = 0; if (R.folk.length > 2 && Math.random() < .18) { const f = pick(here); if (f) { R.folk.splice(R.folk.indexOf(f), 1); if (Math.random() < .3 && S.surv < survCap()) { S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { p.bio = 'ex-raider'; p.mood = 40; toast(`🏳️ ${p.name} deserted ${R.n} and begged at your gate. They were starving.`); feed('🏳️', `${fn(p)} deserted ${R.n}`); } } } } }
+  const buy = (t, cost) => { if (R.stock < cost) return false; R.stock -= cost; R.b.push({ t, c: pick(R.camps).id, a: rnd(0, 6.28) }); return true; };
+  // spending is impulsive: guns and bodies first, food last
+  const roll = Math.random();
+  if (here.length >= tents * 4 && tents < 3 + R.camps.length * 3 && buy('tent', 18)) {}
+  else if (roll < .5 && R.stock > 30 && R.folk.length < Math.min(popCap, 8 + tents * 4)) { R.stock -= 26; R.folk.push(newFolk(R)); if (hostile && R.folk.length % 5 === 0) feed(R.i, `${R.n} now number ${R.folk.length}`); }
+  else if (roll < .7 && towers < 2 + R.camps.length * 2) buy('tower', 35);
+  else if (roll < .85 && walls < R.camps.length * 7) buy('wall', 20);
+  else if (farms < R.camps.length) buy('farm', 25);
+  if (scav < 2 && here.length > 3) pick(here).role = 'scav';
+  if (R.folk.length >= 8 && R.stock > 70 && R.camps.length < 4 && hostile && S.wave >= 3) { R.stock -= 50; R.grow = 0; }
+  // attack: they always want to, and judge the odds badly
+  if (!hostile || S.wave < 2 || (S.peace && S.peace['r' + R.id] > S.wave)) return;
+  R.war = (R.war ?? rnd(120, 240)) - 5 * (isNight() ? 1.6 : 1);
+  if (R.war <= 0 && fighters(R).length >= 3) { R.war = rnd(170, 340) - Math.min(90, R.folk.length * 4); launchRaid(R); }
+}
+function launchRaid(R, hq) {
+  const fg = fighters(R), overcommit = Math.random() < .25, n = Math.min(2 + dayNo(), Math.max(2, Math.round(fg.length * (overcommit ? .95 : .6)))), team = fg.sort(() => Math.random() - .5).slice(0, n); if (!team.length) return;
+  const outs = plotList(null), def = q => S.robots.filter(r => r.postK === q.k).length * 3 + plotList('tower').filter(t => dist(t, q) < CELL * 1.5).length * 2 + (q.p.type === 'tower' ? 4 : 0);
+  // poor scouting: a third of the time they hit whatever is nearest, guarded or not
+  const q = hq || !outs.length || Math.random() < .25 ? null : (Math.random() < .33 ? outs.sort((a, b) => dist(a, R) - dist(b, R)) : outs.sort((a, b) => def(a) - def(b)))[0];
+  const tx = q ? q.x : 0, ty = q ? q.y : 0, from = R.camps.slice().sort((a, b) => dist(a, { x: tx, y: ty }) - dist(b, { x: tx, y: ty }))[0], l = dist(from, { x: tx, y: ty }) || 1, sd = Math.min(l, 230), sx = tx + (from.x - tx) / l * sd, sy = ty + (from.y - ty) / l * sd;
+  for (const f of team) { f.away = true; spawnZombie('at', sx + rnd(-10, 10), sy + rnd(-10, 10), 'bandit'); const z = zombies[zombies.length - 1]; z.wave = true; z.who = f; z.raid = R.id; z.gang = R; z.life = 150; if (q) z.plot = q.k; }
+  const P = q ? PLOTS[q.p.type].n.toLowerCase() + ` on block ${q.k}` : 'the HQ'; toast(`🔫 ${R.n}: ${team.length} raiders coming for ${P}`); sfx('siren', sx, sy, .5); feed('🔫', `${R.n} sent ${team.length} raiders at ${P}`);
+  radio('Lookout', `${team.length} raiders from ${from.n}. ${team[0].name} is out front.${overcommit && fg.length > 5 ? ' Looks like they emptied the whole camp.' : ''}`);
+  if (overcommit && fg.length > 5) R.exposed = S.t + 90;
+}
+function raiderDied(z) { const R = z.gang, f = z.who; if (!R) return; const i = R.folk.indexOf(f); if (i >= 0) R.folk.splice(i, 1); R.killed = (R.killed || 0) + 1; if (z.loot) give({ scrap: Math.round(z.loot) }); if (Math.random() < .25) feed('💀', `${f.name} of ${R.n} was killed in the raid`); if (!R.folk.length) { R.dead = true; toast(`${R.i} ${R.n} is finished. Nobody is left.`); feed('🏳️', `${R.n} was wiped out`); } }
+zombieThink = (o => (z, dt) => { if (z.who && z.flee) { const c = z.gang.camps[0] || { x: z.gang.x, y: z.gang.y }, dx = c.x - z.x, dy = c.y - z.y, l = Math.hypot(dx, dy) || 1; z.x += dx / l * z.spd * dt; z.y += dy / l * z.spd * dt; z.wob += dt * 3; z.ang = Math.atan2(dy, dx); if (l < 15) { z.gone = true; z.who.away = false; z.gang.stock += (z.loot || 0) * 1.5; } return; } o(z, dt); })(zombieThink);
+window.campSheet = (o => (rid, cid) => { o(rid, cid); const R = S.rivals[rid]; if (!R) return; gangInit(R); const here = R.folk.filter(f => !f.away), hs = R.b.reduce((a, b) => (a[b.t] = (a[b.t] || 0) + 1, a), {});
+  q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Scout report</h4><div class="row"><div>${R.boss || 'No leader'}'s people<small>${here.filter(f => f.role === 'fight').length} fighters · ${here.filter(f => f.role === 'scav').length} scavengers${R.folk.length > here.length ? ` · <b style="color:var(--amb)">${R.folk.length - here.length} out raiding</b>` : ''}${R.exposed > S.t ? ' · <b style="color:var(--acc)">camp left exposed!</b>' : ''}</small></div><b>${R.folk.length}</b></div>
+    <div class="row"><div>Compound<small>⛺ ${hs.tent || 0} tents · 🗼 ${hs.tower || 0} towers · 🧱 ${hs.wall || 0} walls · 🌱 ${hs.farm || 0} plots${R.killed ? ` · you've killed ${R.killed}` : ''}</small></div></div>
+    <div class="facestrip">${here.slice(0, 14).map(f => `<img title="${f.name}" src="${face(f)}">`).join('')}</div></div>`); })(window.campSheet);
+function drawCompounds(c, P, k, now) {
+  const showFolk = map.getZoom() >= 16;
+  for (const R of S.rivals || []) { if (R.dead || !R.folk) continue;
+    for (const cp of R.camps || []) { if (cp.hp <= 0) continue; const [cx, cy] = P(cp.x, cp.y); if (cx < -200 || cy < -200 || cx > innerWidth + 200 || cy > innerHeight + 200) continue; const rad = 26 + R.b.length;
+      const walls = R.b.filter(b => b.c === cp.id && b.t === 'wall'); c.strokeStyle = '#3a2c1c'; c.lineWidth = Math.max(2, k * 1.2); for (const w of walls) { c.beginPath(); c.arc(cx, cy, rad * k, w.a, w.a + .75); c.stroke(); }
+      for (const b of R.b) { if (b.c !== cp.id || b.t === 'wall') continue; const x = cx + Math.cos(b.a) * rad * .6 * k, y = cy + Math.sin(b.a) * rad * .6 * k, u = Math.max(4, k * 3);
+        if (b.t === 'tent') { c.fillStyle = R.rel <= -30 ? '#4a3a2c' : '#5a6a4a'; c.beginPath(); c.moveTo(x - u, y + u * .6); c.lineTo(x, y - u * .8); c.lineTo(x + u, y + u * .6); c.fill(); c.fillStyle = R.col; c.fillRect(x - u * .2, y - u * .9, u * .4, u * .2); }
+        else if (b.t === 'tower') { c.strokeStyle = '#2a2018'; c.lineWidth = Math.max(1, k * .5); c.beginPath(); c.moveTo(x - u * .5, y + u); c.lineTo(x, y - u * 1.6); c.lineTo(x + u * .5, y + u); c.stroke(); c.fillStyle = '#5a4128'; c.fillRect(x - u * .55, y - u * 1.9, u * 1.1, u * .5); }
+        else if (b.t === 'farm') { c.fillStyle = '#4a3a20'; c.fillRect(x - u, y - u * .6, u * 2, u * 1.2); c.fillStyle = '#5a7a30'; for (let i = 0; i < 3; i++) c.fillRect(x - u + 1, y - u * .5 + i * u * .4, u * 2 - 2, u * .14); }
+        else { c.fillStyle = '#5a5048'; c.fillRect(x - u * .7, y - u * .3, u * 1.4, u * .6); c.fillStyle = '#7a4030'; c.fillRect(x - u * .3, y - u * .6, u * .7, u * .4); } }
+      if (showFolk) for (const f of R.folk) { if (f.away || f.camp !== cp.id) continue; const t = now / 5200 + f.seed, ax = Math.cos(t) * (rad * .75) * (Math.sin(f.seed) * .5 + .5), ay = Math.sin(t * 1.3 + f.seed) * rad * .6; drawPersonTop(c, cx + ax * k, cy + ay * k, Math.max(2.8, .5 * k), f.look, -t, f.role === 'fight'); }
+    } }
+}
+drawOcc = (o => (c, P, k, now) => { drawCompounds(c, P, k, now); o(c, P, k, now); })(drawOcc);
+
+// ---------- 4. lives: people age, chase goals, gain and lose themselves, and it shows on their faces ----------
+const ASPIRE = {
+  craft: { t: 'Master a trade', perk: 'Master', i: '⚒️', p: p => JOBS[p.role] ? Math.min(1, lvl(p, p.role) / 4) : 0 },
+  love: { t: 'Find someone', perk: 'Devoted', i: '💞', p: p => p.partner ? 1 : Math.min(.9, Math.max(0, ...Object.values(p.rel || { a: 0 })) / 80) },
+  friends: { t: 'Make real friends', perk: 'Beloved', i: '🤝', p: p => Math.min(1, Object.values(p.rel || {}).filter(v => v > 40).length / 3) },
+  last: { t: 'Survive 15 more nights', perk: 'Veteran', i: '🎖️', p: p => Math.min(1, (p.st.nights || 0) / 15) },
+  watch: { t: 'Hold the line for 6 nights', perk: 'Sentinel', i: '🛡️', p: p => Math.min(1, (p.st.guard || 0) / 6) },
+  peace: { t: 'Be happy again', perk: 'At peace', i: '🕊️', p: p => Math.min(1, (p.st.happy || 0) / 5) },
+  feed: { t: 'Keep everyone fed for a week', perk: 'Provider', i: '🥕', p: p => Math.min(1, (p.st.farm || 0) / 7) },
+};
+const PERK = { Master: 'Teaches the trade. Learns twice as fast', Devoted: 'Steadier with someone to live for', Beloved: 'Lifts everyone nearby', Veteran: 'Shrugs off wounds', Sentinel: 'Others feel safer around them', 'At peace': 'Mood recovers quickly', Provider: 'Food feels less scarce to them', Hardened: 'Grief hits half as hard', Broken: 'Something went out of them', Survivor: 'Came back from the edge' };
+const WISHES = [['Sit by a fire tonight', () => homeOf('fire').length > 0], ['A hot meal', () => homeOf('kitchen').length > 0 && S.res.food > 5], ['A proper bed', () => S.surv < survCap()], ['To talk to you', p => p.talkedD === dayNo()], ['See something growing', () => homeOf('bed').length > 0], ['Feel safe behind the wall', () => wallPct() > .75], ['Clean water', () => S.res.water > 30], ['Somewhere to sit', () => homeOf('bench').length > 0]];
+function lifeOf(p) { if (p.st) return p; p.st = {}; p.age = 18 + Math.random() * 46 | 0; p.joined = dayNo(); p.perks = []; p.story = []; p.asp = pick(Object.keys(ASPIRE)); p.wish = pick(WISHES)[0]; return p; }
+const story = (p, t, i = '•') => { lifeOf(p).story.unshift({ d: dayNo(), t, i }); if (p.story.length > 14) p.story.length = 14; };
+const addPerk = (p, k, msg) => { if (p.perks.includes(k)) return; p.perks.push(k); story(p, msg, '⭐'); feed('⭐', `${fn(p)}: ${msg}`); clearFace(p); };
+const clearFace = p => { for (const k of Object.keys(FACES)) if (k.startsWith(String(p.id))) delete FACES[k]; };
+remember = (o => (p, txt) => { o(p, txt); if (p) story(p, txt); })(remember);
+function dawnLives() {
+  for (const p of S.people) { lifeOf(p); identity(p); const st = p.st, L = p.look, m = p.mood ?? 60;
+    st.nights = (st.nights || 0) + 1; if (p.role === 'guard') st.guard = (st.guard || 0) + 1; if (p.role === 'farm' && S.res.food > 15) st.farm = (st.farm || 0) + 1; st.happy = m > 68 ? (st.happy || 0) + 1 : Math.max(0, (st.happy || 0) - 1); st.low = m < 18 ? (st.low || 0) + 1 : 0;
+    const W = WISHES.find(w => w[0] === p.wish); if (W && W[1](p)) { p.mood = Math.min(100, m + 7); p.wishes = (p.wishes || 0) + 1; } else if (Math.random() < .3) p.mood = Math.max(0, m - 3); p.wish = pick(WISHES)[0];
+    if (ASPIRE[p.asp].p(p) >= 1) { const A = ASPIRE[p.asp]; addPerk(p, A.perk, `Achieved a life goal: ${A.t.toLowerCase()}`); p.mood = Math.min(100, (p.mood ?? 60) + 25); toast(`${A.i} ${fn(p)} did it: ${A.t.toLowerCase()}. They've changed.`); if (S.f.noCuts !== true) cutPerson(p, 'A LIFE GOAL', `I said I'd ${A.t.toLowerCase()}. Look at me now.`); const left = Object.keys(ASPIRE).filter(k => !p.perks.includes(ASPIRE[k].perk)); p.asp = left.length ? pick(left) : p.asp; }
+    if (st.low >= 4 && !p.perks.includes('Broken')) addPerk(p, 'Broken', 'Something broke. They stopped talking about the future');
+    if (p.perks.includes('Broken') && st.happy >= 3) { p.perks.splice(p.perks.indexOf('Broken'), 1); addPerk(p, 'Survivor', 'Came back from the edge'); }
+    if ((st.loss || 0) >= 3) addPerk(p, 'Hardened', 'Too many funerals. It doesn\'t cut as deep now');
+    if (p.perks.includes('Hardened') && p.grief) p.grief *= .5; if (p.perks.includes('At peace') && m < 50) p.mood += 4; if (p.perks.includes('Devoted') && p.partner) p.mood = Math.min(100, (p.mood ?? 60) + 2); if (p.perks.includes('Veteran')) p.hp = Math.min(100, p.hp + 10); if (p.perks.includes('Master') && JOBS[p.role]) (p.xp ||= {})[p.role] = (p.xp[p.role] || 0) + 1; if (p.perks.includes('Broken')) p.mood = Math.min(p.mood, 55);
+    if (p.perks.includes('Beloved') || p.perks.includes('Sentinel')) S.camp.mor = Math.min(100, S.camp.mor + .5);
+    // the body keeps the score: wounds scar, grief greys, hard days thin you out, the beard grows
+    if (p.hp < 45 && L.sc < 0) { L.sc = Math.random() * 3 | 0; story(p, 'Got the scar they carry now', '🩹'); clearFace(p); }
+    if ((p.grief > 60 || p.age > 52) && L.hc !== 4 && Math.random() < .12) { L.hc = 4; L.ag = true; story(p, 'Their hair went grey', '🪶'); clearFace(p); }
+    if (!L.bd && !L.mk && p.id % 2 && Math.random() < .03) { L.bd = true; clearFace(p); }
+    if (p.need && p.need.food < 25 && L.bw > 0 && Math.random() < .15) { L.bw--; story(p, 'Lost a lot of weight', '🥫'); } else if (p.need && p.need.food > 80 && S.res.food > 120 && L.bw < 2 && Math.random() < .03) L.bw++;
+    if (dayNo() % 10 === (p.id % 10)) { p.age++; if (p.age % 10 === 0) { story(p, `Turned ${p.age}`, '🎂'); feed('🎂', `${fn(p)} turned ${p.age}`); p.mood = Math.min(100, (p.mood ?? 60) + 6); } if (p.age > 79 && Math.random() < .12) killPerson(p, 'passed away in their sleep, of old age'); }
+  }
+}
+onDawn = (o => () => { o(); dawnLives(); })(onDawn);
+killPerson = (o => (p, why) => { for (const q of S.people) if (q !== p) { lifeOf(q); q.st.loss = (q.st.loss || 0) + 1; } o(p, why); })(killPerson);
+window.talkTo = (o => id => { const p = S.people.find(q => q.id === id); if (p) p.talkedD = dayNo(); o(id); })(window.talkTo);
+vctx = (o => p => { const c = o(p); lifeOf(p); c.goal = ASPIRE[p.asp].t.toLowerCase(); c.wish = p.wish.toLowerCase(); c.age = p.age; return c; })(vctx);
+INTENTS.small.open.push('My goal? To {goal}. Laugh if you want.', 'You know what I want today? {wish}. That\'s all.', 'I\'m {age}. I never thought I\'d get to say that.');
+window.inspectP = (o => id => {
+  o(id); const p = S.people.find(q => q.id === id), box = q$('#sheet .persona'); if (!p || !box) return; lifeOf(p); const A = ASPIRE[p.asp];
+  box.insertAdjacentHTML('afterend', `<div class="lifebox"><div class="row" style="display:block"><b>Age ${p.age}</b> <small style="display:inline">· here since day ${p.joined} · ${p.st.nights || 0} nights survived · ${p.wishes || 0} wishes granted</small>
+    <small>${A.i} Life goal: <b>${A.t}</b></small>${meter(A.p(p) * 100, '#c9a23a')}<small>💭 Today they want: <b>${p.wish}</b></small>
+    ${p.perks.length ? `<div class="chips">${p.perks.map(k => `<span class="perk" title="${PERK[k] || ''}">${k}</span>`).join('')}</div><small>${p.perks.map(k => PERK[k]).filter(Boolean).join('. ')}.</small>` : ''}</div>
+    ${p.story.length ? `<h4>Their story</h4>${p.story.slice(0, 6).map(e => `<div class="memo"><small>Day ${e.d}</small> ${e.i} ${e.t}</div>`).join('')}` : ''}</div>`);
+})(window.inspectP);
+worldTick = (o => () => { o(); if (S.t % 5 === 0 && S.rivals) for (const R of S.rivals) if (!R.dead) gangAI(R); if (S.t % 15 === 0) S.people.forEach(lifeOf); })(worldTick);
 
 // ================= radio =================
 function radio(from, msg) {
