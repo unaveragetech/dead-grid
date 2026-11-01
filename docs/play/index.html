@@ -394,7 +394,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.8.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
 const $ = id => document.getElementById(id);
@@ -1072,7 +1072,7 @@ function zombieThink(z, dt) {
   }
   const dx = tgt.x - z.x, dy = tgt.y - z.y, l = Math.hypot(dx, dy);
   const reach = tgt.lure ? 0 : d.ranged || (tgt.hq ? 15 : 5);
-  if (wallBlock(z, tgt, d, dt)) return;
+  if (!d.climb && wallBlock(z, tgt, d, dt)) return;
   if (l > reach) {
     z.wob += dt * 3;
     const s = z.spd * dt * (isNight() ? 1.15 : 1) * (S.camp.wx === 'snow' ? .75 : 1);
@@ -1135,7 +1135,7 @@ function towerThink(t, dt, overload) {
     hit(z, dmg, t);
     fx.push({ k: 'shot', a: { x: t.x, y: t.y, h: 2.5 }, b: z, t: t.type === 'sniper' ? .25 : .08, c: d.col });
   }
-  t.cd = d.rate * (d.power && overload ? 2 : 1);
+  t.cd = d.rate * (d.power && overload ? 2 : 1) * (t.unmanned ? 3 : 1);
 }
 
 // ================= world tick (1s) =================
@@ -1147,12 +1147,12 @@ function worldTick() {
     if (c.c) { next[key(i, j)] = Math.max(0, c.i - 1.5); continue; }
     const nmax = Math.max(0, ...neighbors(i, j).map(([a, b]) => cell(a, b).c ? 0 : cell(a, b).i));
     let v = c.i;
-    if (nmax > 25 && v < nmax) v += (nmax - v) * (.012 + .002 * S.wave);
-    if (v > 0) v += .08 + .02 * S.wave;
+    if (nmax > 50 && v < nmax) v += (nmax - v) * (.0005 + .00004 * Math.min(S.wave, 40));
+    if (v > 0 && v < 70) v += .0012 + .00012 * Math.min(S.wave, 40);
     next[key(i, j)] = Math.min(100, v);
   }
   for (const k in next) cell(...k.split(',').map(Number)).i = next[k];
-  for (const z of zombies) { const c = cellAt(z); if (c && c.c) c.i = Math.min(100, c.i + .4); }
+  for (const z of zombies) { const c = cellAt(z); if (c && c.c && !ZTYPES[z.t].human) c.i = Math.min(100, c.i + .05); }
   for (const [k, c] of Object.entries(S.cells)) if (c.c && c.i >= 60 && k !== '0,0') {
     const pl = (S.plots || {})[k]; if (pl && pl.hp > 0) { c.i = 45; pl.hp -= plotMax(pl) * .25; continue; }
     if (pl) delete S.plots[k];
@@ -2645,14 +2645,14 @@ function militiaThink(dt) {
     const mv = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, l = Math.hypot(dx, dy); if (l > .5) { m.x += dx / l * s * dt; m.y += dy / l * s * dt; m.wob += dt * 6; m.ang = Math.atan2(dy, dx); } return l; };
     if (S.alertT > 0 && z && !coward && Math.hypot(m.x, m.y) < 140) {
       const d = dist(m, z); m.ang = Math.atan2(z.y - m.y, z.x - m.x);
-      if (d > 20) mv(z.x, z.y, 4.2); else if (d < 8) mv(m.x * 2 - z.x, m.y * 2 - z.y, 4.6);
+      { const Gr = GEAR[p.gear || 'fists'].r; if (d > Math.max(2.5, Gr * .75)) mv(z.x, z.y, 4.2); else if (Gr > 8 && d < 8) mv(m.x * 2 - z.x, m.y * 2 - z.y, 4.6); }
       { const mr = Math.hypot(m.x, m.y), lim = wallRAt(Math.atan2(m.y, m.x)) - 2.5; if (mr > lim) { m.x *= lim / mr; m.y *= lim / mr; } }
       m.cd -= dt;
-      if (m.cd <= 0 && d < 26) {
-        const armed = S.res.ammo >= .3; if (armed) S.res.ammo -= .3;
-        hit(z, (armed ? 6 : 2) * (p.trait === 'marks' ? 1.6 : 1) * (1 + .1 * S.up.armory), null);
+      const G = GEAR[p.gear || 'fists'], gr = Math.max(G.r, 3.5); if (m.cd <= 0 && d < gr) {
+        const armed = S.res.ammo >= G.a; if (armed) S.res.ammo -= G.a;
+        hit(z, (armed ? G.d : 2) * (p.trait === 'marks' ? 1.6 : 1) * (1 + .1 * S.up.armory), null);
         fx.push({ k: 'shot', a: { x: m.x, y: m.y, h: 1.3 }, b: z, t: .07, c: '#ffe08a' }); m.fired = performance.now();
-        sfx('pistol', m.x, m.y); m.cd = armed ? .7 : 1.2; noise(m.x, m.y, 70, .2);
+        sfx(G.a ? 'pistol' : 'thud', m.x, m.y); m.cd = G.cd; if (G.a) noise(m.x, m.y, 70, .2); else fightFx(m.x, m.y, G.i || '🤜');
       }
     } else if (mv(0, 0, 4) < 3 && S.alertT <= 0) { p.out = false; militia.splice(militia.indexOf(m), 1); continue; }
     if (m.hp < p.hp) { p.hp = m.hp; if (Math.random() < .3) sfx('scream', m.x, m.y, .5); }
@@ -3058,6 +3058,7 @@ function moreSheet() {
   const tile = (i, l, f, sub) => `<button class="tile" onclick="${f}"><b>${i}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ''}</button>`;
   openSheet(`<h3>☰ Command</h3><div class="tiles">
     ${tile('🏠', 'Base', 'baseSheet()', 'Upgrades')}
+    ${tile('🌍', 'The grid', 'worldSheet()', (S.wlog || []).length + ' events')}
     ${tile('🌱', 'Homestead', 'homesteadSheet()', homeOf('bed').length + ' beds')}
     ${tile('🎒', 'Stockpile', 'invSheet()', 'Inventory')}
     ${tile('🔸', 'Armory', 'armorySheet()', 'Craft')}
@@ -6593,6 +6594,161 @@ window.inspectP = (o => id => {
     ${p.story.length ? `<h4>Their story</h4>${p.story.slice(0, 6).map(e => `<div class="memo"><small>Day ${e.d}</small> ${e.i} ${e.t}</div>`).join('')}` : ''}</div>`);
 })(window.inspectP);
 worldTick = (o => () => { o(); if (S.t % 5 === 0 && S.rivals) for (const R of S.rivals) if (!R.dead) gangAI(R); if (S.t % 15 === 0) S.people.forEach(lifeOf); })(worldTick);
+
+
+// ================= the living world: see DESIGN-living-world.md =================
+function alarm(msg) { if (S.f.noAlarm) return; if (SP.v > 1) { SP.v = 1; syncSpd(); toast(`⏱ Slowed to 1×: ${msg}`); } }
+function world(icon, txt, big) { toast(`${icon} ${txt}`); feed(icon, txt); (S.wlog ||= []).unshift({ d: dayNo(), icon, txt }); if (S.wlog.length > 40) S.wlog.length = 40; if (big) alarm(txt.slice(0, 40)); }
+
+// ---------- 1. crews ----------
+const isGun = t => { const d = TOWERS[t.type]; return d.dmg && d.rate && !d.home && t.type !== 'spikes' && t.type !== 'shock' && (t.bp ?? 1) >= 1; };
+const crewCap = () => 4 + 2 * (S.camp.jobs.guard || 0) + Math.floor((S.camp.jobs.wallc || 0) / 2) + S.robots.filter(r => !r.broken && ['guard', 'heavy', 'warden'].includes(r.type)).length - (S.forts || []).length;
+function crewTick() { const g = S.towers.filter(isGun), cap = Math.max(0, crewCap()); g.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)); g.forEach((t, i) => t.unmanned = i >= cap); S.unmanned = Math.max(0, g.length - cap); }
+TOWERS.sniper.range = 105; TOWERS.sniper.ammo = 1; TOWERS.sniper.dmg = 32; TOWERS.sniper.rate = 2.6;
+
+// ---------- 2. new weapons ----------
+Object.assign(TOWERS, {
+  gl: { name: 'Grenade Launcher', icon: '🎯', look: 'mortar', night: 4, cost: { scrap: 95, ammo: 10 }, range: 80, min: 15, dmg: 26, rate: 2, ammo: .8, splash: 14, hp: 90, col: '#90a060', desc: 'Lobs grenades into a crowd', fire: (t, z, dmg) => shells.push({ x: z.x, y: z.y, t: .7, dmg, r: 14, src: t }) },
+  mini: { name: 'Minigun', icon: '🌀', look: 'mg', night: 15, cost: { scrap: 170, elec: 6 }, range: 60, dmg: 5, rate: .07, ammo: .1, hp: 150, col: '#e0e0a0', desc: 'A wall of bullets. Empties your ammo' },
+  clay: { name: 'Claymore', icon: '💥', look: 'mine', cost: { scrap: 25, ammo: 6 }, range: 16, dmg: 70, rate: .1, hp: 15, col: '#70804a', desc: 'One blast down a cone, then gone', fire: (t, z, dmg) => { conePick(t, z, 22, .8).forEach(o => hit(o, dmg, t)); fx.push({ k: 'boom', x: t.x, y: t.y, r: 18, t: .4, c: '255,180,80' }); sfx('boom', t.x, t.y, .7); t.hp = 0; } },
+  tar: { name: 'Tar Pit', icon: '🛢️', look: 'mine', cost: { scrap: 30, fuel: 3 }, range: 16, dmg: .1, rate: .5, hp: 200, col: '#222', desc: 'Slows everything crossing it', quiet: true, fire: t => zombies.forEach(o => { if (dist(o, t) < 16) o.tarT = 1.2; }) },
+  flare: { name: 'Flare Mast', icon: '🚨', look: 'light', cost: { scrap: 35 }, range: 80, rate: 8, hp: 50, col: '#ff6a5a', desc: 'Reveals stalkers and pulls fire: nearby guns hit 15% harder', quiet: true, fire: t => fx.push({ k: 'ring', x: t.x, y: t.y, r: 30, t: .5 }) },
+});
+for (const k of ['gl', 'mini']) TOWERS[k].unlock = k;
+BUILD_CATS.find(c => c[0] === 'Defenses')[1].push('gl', 'mini');
+BUILD_CATS.find(c => c[0] === 'Barriers & lights')[1].push('clay', 'tar', 'flare');
+Object.assign(TOWER_H, { gl: .6, mini: 1.7, clay: 0, tar: 0, flare: 2.4 });
+const GEAR = { fists: { n: 'Bare hands', d: 2, r: 3, cd: 1, a: 0 }, bat: { n: 'Spiked bat', i: '🏏', d: 6, r: 3.5, cd: .9, a: 0, c: { scrap: 8 } }, machete: { n: 'Machete', i: '🗡️', d: 10, r: 3.5, cd: .8, a: 0, c: { scrap: 15 } }, pistol: { n: 'Pistol', i: '🔫', d: 6, r: 26, cd: .7, a: .3, c: { scrap: 20 } }, shotgun: { n: 'Shotgun', i: '💢', d: 16, r: 14, cd: 1.4, a: .6, c: { scrap: 40 } }, rifle: { n: 'Hunting rifle', i: '🎯', d: 16, r: 45, cd: 1.6, a: .5, c: { scrap: 55 } }, smg: { n: 'SMG', i: '🔥', d: 5, r: 24, cd: .22, a: .15, c: { scrap: 70, elec: 1 } } };
+function gearTick() { S.arms ||= {}; const G = Object.keys(GEAR).filter(k => k !== 'fists').sort((a, b) => GEAR[b].d / GEAR[b].cd - GEAR[a].d / GEAR[a].cd); const free = { ...S.arms }; for (const p of S.people.slice().sort((a, b) => (b.role === 'guard') - (a.role === 'guard'))) { const k = G.find(g => free[g] > 0); p.gear = k || 'fists'; if (k) free[k]--; } }
+window.craftGear = k => { if (!pay(GEAR[k].c)) return; (S.arms ||= {})[k] = (S.arms[k] || 0) + 1; gearTick(); armorySheet(); };
+armorySheet = (o => () => { o(); q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Hand weapons</h4><small style="color:var(--dim)">Guards get the best first. Anyone in a fight uses what they carry.</small>${Object.entries(GEAR).filter(([k]) => k !== 'fists').map(([k, g]) => `<div class="row"><div>${g.i} ${g.n} × ${(S.arms || {})[k] || 0}<small>${g.r > 5 ? g.r + ' m range' : 'Hand to hand, no ammo'} · hits for ${g.d}</small></div>${btn(fmtCost(g.c), `craftGear('${k}')`, !canPay(g.c))}</div>`).join('')}</div>`); })(armorySheet);
+
+// ---------- 3. new infected, night types, adaptation ----------
+Object.assign(ZTYPES, {
+  crawler: { hp: 16, spd: 6, dmg: 5, r: 2, col: '#b05a4a', h: .6 },
+  riot: { hp: 70, spd: 2.3, dmg: 9, r: 3.4, col: '#3a4a5a', h: 1.8, armor: .6 },
+  bloater: { hp: 60, spd: 1.8, dmg: 4, r: 5, col: '#8aa040', h: 1.9, blast: 1 },
+  screamer: { hp: 28, spd: 2.8, dmg: 3, r: 3, col: '#d0a0c0', h: 1.8, scream: 1 },
+  stalker: { hp: 34, spd: 4.2, dmg: 12, r: 2.8, col: '#50405a', h: 1.7, climb: 1 },
+  dog: { hp: 10, spd: 7.5, dmg: 6, r: 2, col: '#6a4a3a', h: .7 },
+  lobber: { hp: 75, spd: 2, dmg: 4, r: 3.6, col: '#a06a2a', h: 2, lob: 1, armor: .25 },
+});
+const NIGHTS = { normal: ['☠️', 'An ordinary night', []], swarm: ['🐜', 'Swarm night: fast, weak, everywhere', ['runner', 'crawler', 'crawler']], fog: ['🌫️', 'They\'re climbing tonight', ['stalker', 'stalker', 'walker']], bloat: ['🤢', 'Bloaters in the column. Keep them off the wall', ['bloater', 'walker', 'walker']], riot: ['🛡️', 'Armored dead: old riot police', ['riot', 'riot', 'walker']], choir: ['📢', 'Screamers are calling more', ['screamer', 'walker', 'runner']], blood: ['🩸', 'BLOOD MOON: everything, all at once', ['brute', 'runner', 'stalker', 'bloater', 'riot', 'crawler']] };
+const CLS = t => { const k = t && t.type; return !k ? null : ['sniper', 'harpoon', 'rail'].includes(k) ? 'precision' : ['mg', 'autoc', 'mini', 'cannon'].includes(k) ? 'spray' : ['mortar', 'rocket', 'flak', 'gl', 'clay'].includes(k) ? 'blast' : ['flamer', 'acid'].includes(k) ? 'burn' : ['tesla', 'shock'].includes(k) ? 'energy' : null; };
+const ADAPT = { precision: ['Skulls hardened against your snipers, and lobbers are shelling your guns', 'lobber'], spray: ['They\'re shrugging off small arms. Armored dead in the front', 'riot'], blast: ['They\'ve learned to spread out. Spitters and climbers now', 'stalker'], burn: ['They come wet and burning. Fire isn\'t stopping them', 'brute'], energy: ['Charge doesn\'t hold them now', 'crawler'] };
+zType = (o => () => { const nk = isNight() && NIGHTS[S.nightKind], r = Math.random(); if (S.adaptTo && r < (S.wave > 8 ? .2 : .1) && isNight()) { const a = ADAPT[S.adaptTo][1]; return a === 'lobber' && S.wave < 6 ? 'runner' : a; } if (nk && nk[2].length && r < .6) return pick(nk[2]); if (S.wave >= 3 && r < .05 + Math.min(.1, S.wave * .006)) return pick(['crawler', 'riot', 'bloater', 'screamer', 'lobber'].slice(0, Math.min(5, S.wave - 2))); return o(); })(zType);
+startWave = (o => () => {
+  const tot = Object.values(S.kb || {}).reduce((a, b) => a + b, 0), top = Object.entries(S.kb || {}).sort((a, b) => b[1] - a[1])[0]; S.adaptTo = tot > 12 && top && top[1] / tot > .45 ? top[0] : null; S.kb = {};
+  const w = S.wave, kinds = w < 3 ? ['normal'] : w < 6 ? ['normal', 'normal', 'swarm', 'riot'] : ['normal', 'swarm', 'fog', 'bloat', 'riot', 'choir']; S.nightKind = w > 5 && w % 10 === 0 ? 'blood' : pick(kinds);
+  o(); const N = NIGHTS[S.nightKind]; for (let i = waveQueue.length * Math.min(1.2, Math.max(0, (w - 4) * .07)) | 0; i > 0; i--) waveQueue.push('surge'); if (S.nightKind === 'blood') for (let i = waveQueue.length * .6 | 0; i > 0; i--) waveQueue.push('surge');
+  if (S.nightKind !== 'normal') { toast(`${N[0]} ${N[1]}`); radio('Lookout', N[1] + '.'); if (S.nightKind === 'blood') alarm('blood moon'); }
+  if (S.adaptTo) { toast(`🧬 ${ADAPT[S.adaptTo][0]}`); feed('🧬', ADAPT[S.adaptTo][0]); radio('Doc Reyes', ADAPT[S.adaptTo][0] + '. Mix up your guns.'); }
+})(startWave);
+hit = (o => (z, d, s) => {
+  const zt = ZTYPES[z.t], cl = CLS(s); let m = 1; if (cl && cl === S.adaptTo) m *= .65; if (zt.armor && (cl === 'spray' || cl == null)) m *= 1 - zt.armor; if (s && S.towers.some(q => q.type === 'flare' && (q.bp ?? 1) >= 1 && dist(q, s) < 80)) m *= 1.15;
+  const was = z.dead; o(z, d * m, s);
+  if (z.dead && !was) { const ic = cellAt(z); if (ic && !zt.human) ic.i = Math.max(0, ic.i - .25); if (cl) (S.kb ||= {})[cl] = (S.kb[cl] || 0) + 1; if (zt.blast) { fx.push({ k: 'boom', x: z.x, y: z.y, r: 16, t: .5, c: '150,190,60' }); sfx('boom', z.x, z.y, .6); for (const t of S.towers) if (dist(t, z) < 12) t.hp -= 40; const i = segAt(z.x, z.y); if (Math.abs(Math.hypot(z.x, z.y) - wallRAt(Math.atan2(z.y, z.x))) < 10) S.wall.segs[i] = Math.max(0, S.wall.segs[i] - 45); zombies.forEach(q => { if (q !== z && dist(q, z) < 8) o(q, 20); }); } }
+})(hit);
+drawZombieTop = (o => (c, x, y, s, z, night) => { o(c, x, y, s, z, night); const k = ZTYPES[z.t]; if (k.lob || k.armor || k.blast || k.scream || k.climb || z.t === 'crawler' || z.t === 'dog') { c.fillStyle = k.col; c.globalAlpha = .75; c.beginPath(); c.arc(x, y, s * (k.blast ? 1.35 : .8), 0, 7); c.fill(); c.globalAlpha = 1; if (k.scream) { c.strokeStyle = 'rgba(230,180,220,.6)'; c.beginPath(); c.arc(x, y, s * (1.5 + (performance.now() / 300 % 1.5)), 0, 7); c.stroke(); } } })(drawZombieTop);
+
+// ---------- 4. three-way combat, firefights, hand to hand ----------
+const hurtP = (p, n, by) => { p.hp -= n; if (p.hp <= 0 && S.people.includes(p)) killPerson(p, by); };
+function fightFx(x, y, s) { if (Math.random() < .5) fx.push({ k: 'txt', x: x + rnd(-1, 1), y: y + rnd(-1, 1), s, t: .5 }); sfx('thud', x, y, .4); }
+function enemyOf(z, range) { let best = null, bd = range; const tk = (o, kind) => { const d = dist(z, o); if (d < bd) { bd = d; best = { o, kind, d }; } }; for (const q of zombies) if (!ZTYPES[q.t].human && !q.dead) tk(q, 'z'); for (const m of militia) tk(m, 'm'); for (const r of S.robots) if (!r.broken) tk(r, 'r'); for (const p of S.people) if (!p.out && !p.inside && p.wx != null) { const d = Math.hypot(p.wx - z.x, p.wy - z.y); if (d < bd) { bd = d; best = { o: p, kind: 'p', d }; } } return best; }
+function strike(z, e, n) { const o = e.o; if (e.kind === 'z') hit(o, n); else if (e.kind === 'm') o.hp -= n; else if (e.kind === 'r') o.hp -= n; else { hurtP(o, n, 'was killed by raiders'); if (S.t - (S.hurtMsg || -99) > 20) { S.hurtMsg = S.t; toast(`🩸 Raiders are on ${fn(o)}!`); alarm('raiders inside'); } } }
+zombieThink = (o => (z, dt) => {
+  const d = ZTYPES[z.t]; if (z.freeze > 0) return o(z, dt); if (z.tarT > 0) { z.tarT -= dt; dt *= .35; }
+  if (d.human && !z.flee) {
+    z.brole ||= pick(['rifle', 'rifle', 'rifle', 'rush', 'rush', 'molotov', 'loot']); z.scan = (z.scan || 0) - dt;
+    if (z.scan <= 0) { z.scan = .4; z.foe = enemyOf(z, z.brole === 'rush' ? 34 : 28); }
+    const e = z.foe, alive = e && (e.kind === 'z' ? !e.o.dead : e.kind === 'p' ? S.people.includes(e.o) : e.o.hp > 0);
+    if (z.brole === 'molotov' && (z.mcd = (z.mcd || 3) - dt) <= 0) { const t = S.towers.filter(t => !TOWERS[t.type].home && dist(t, z) < 26)[0]; if (t) { z.mcd = 6; t.hp -= 30; fx.push({ k: 'flame', a: { x: z.x, y: z.y, h: 1.5 }, b: t, t: .5, c: '#ff8030' }); sfx('flamer', t.x, t.y, .5); } }
+    if (alive && z.brole !== 'loot') {
+      const ex = e.kind === 'p' ? e.o.wx : e.o.x, ey = e.kind === 'p' ? e.o.wy : e.o.y, dx = ex - z.x, dy = ey - z.y, l = Math.hypot(dx, dy) || 1; z.ang = Math.atan2(dy, dx); z.wob += dt * 3; z.cd -= dt;
+      const melee = z.brole === 'rush' || l < 3.5, want = melee ? 2.5 : 22;
+      if (!wallBlock(z, { x: ex, y: ey }, d, dt)) { if (l > want) { z.x += dx / l * z.spd * dt; z.y += dy / l * z.spd * dt; } else if (!melee) { z.x += -dy / l * z.spd * .4 * dt * Math.sin(z.wob * .3); z.y += dx / l * z.spd * .4 * dt * Math.sin(z.wob * .3); } }
+      if (z.cd <= 0) { if (melee && l < 3.5) { z.cd = .9; strike(z, { ...e }, 11); fightFx(z.x, z.y, '🤜'); } else if (!melee && l < 30) { z.cd = 1.3; fx.push({ k: 'shot', a: { x: z.x, y: z.y, h: 1.5 }, b: { x: ex, y: ey }, t: .12, c: '#ffe08a' }); sfx('pistol', z.x, z.y, .5); if (Math.random() < .5) strike(z, { ...e }, 8); } }
+      if (d.human && (z.hp < z.max * .35 || (z.life = (z.life ?? 150) - dt) <= 0)) z.flee = true; return;
+    }
+  } else if (!d.human && !z.flee) {
+    // the dead go for bandits too
+    z.hs = (z.hs || 0) - dt; if (z.hs <= 0) { z.hs = .6; z.prey = zombies.find(q => ZTYPES[q.t].human && !q.dead && dist(q, z) < 16) || null; }
+    if (z.prey && !z.prey.dead && !z.prey.gone) { const q = z.prey, dx = q.x - z.x, dy = q.y - z.y, l = Math.hypot(dx, dy) || 1; z.ang = Math.atan2(dy, dx); z.wob += dt * 3; if (l > 2.5) { z.x += dx / l * z.spd * dt; z.y += dy / l * z.spd * dt; } else if ((z.cd -= dt) <= 0) { z.cd = 1; hit(q, d.dmg); fightFx(q.x, q.y, '🩸'); } return; }
+    if (d.lob) { const gun = S.towers.filter(t => !TOWERS[t.type].home && t.hp > 0).sort((a, b) => dist(a, z) - dist(b, z))[0], dg = gun ? dist(gun, z) : 1e9; if (gun && dg < 85) { z.ang = Math.atan2(gun.y - z.y, gun.x - z.x); if ((z.cd -= dt) <= 0) { z.cd = 6; gun.hp -= 13; S.towers.forEach(t => { if (t !== gun && dist(t, gun) < 7) t.hp -= 5; }); fx.push({ k: 'flame', a: { x: z.x, y: z.y, h: 3 }, b: gun, t: .5, c: '#c08a30' }); fx.push({ k: 'boom', x: gun.x, y: gun.y, r: 7, t: .35, c: '190,140,50' }); sfx('splat', gun.x, gun.y, .7); if (S.t - (S.lobMsg || -99) > 45) { S.lobMsg = S.t; toast('💥 Lobbers are shelling your guns from out past the wall'); } } return; } }
+    if (d.scream) { const r = Math.hypot(z.x, z.y); if (r < wallR() + 55) { if ((z.sc2 = (z.sc2 ?? 5) - dt) <= 0) { z.sc2 = 7; for (let i = 0; i < 2; i++) { const a = rnd(0, 6.28); spawnZombie('at', z.x + Math.cos(a) * 30, z.y + Math.sin(a) * 30, 'walker'); zombies[zombies.length - 1].wave = true; } noise(z.x, z.y, 160, 3); sfx('groan', z.x, z.y, .8); } return; } }
+    if (d.climb && Math.hypot(z.x, z.y) < wallR() + 6) { const t = S.people.filter(p => !p.out && !p.inside && p.wx != null).sort((a, b) => Math.hypot(a.wx - z.x, a.wy - z.y) - Math.hypot(b.wx - z.x, b.wy - z.y))[0]; if (t) { const dx = t.wx - z.x, dy = t.wy - z.y, l = Math.hypot(dx, dy) || 1; z.x += dx / l * z.spd * dt; z.y += dy / l * z.spd * dt; z.ang = Math.atan2(dy, dx); if (l < 2.5 && (z.cd -= dt) <= 0) { z.cd = 1; hurtP(t, d.dmg, 'was dragged down by a stalker'); fightFx(z.x, z.y, '🩸'); if (S.t - (S.stalkMsg || -99) > 25) { S.stalkMsg = S.t; toast(`🕷️ A stalker got over the wall and has ${fn(t)}!`); alarm('stalker inside'); } } return; } }
+  }
+  o(z, dt);
+})(zombieThink);
+// anyone reached fights back with what they carry; guards use their gear at range
+function brawlTick(dt) {
+  for (const p of S.people) { if (p.out || p.inside || p.wx == null) continue; p.mcd = (p.mcd || 0) - dt; if (p.mcd > 0) continue; const z = zombies.find(q => Math.hypot(q.x - p.wx, q.y - p.wy) < 3.5 && !q.dead); if (!z) continue; if (p.trait === 'coward' && Math.random() < .5) { p.mcd = 1; continue; } const g = GEAR[p.gear || 'fists']; p.mcd = Math.max(.8, g.cd); hit(z, Math.max(g.d * .8, 3) * (p.trait === 'tough' ? 1.4 : 1)); speak(p, g.i || '🤜'); fightFx(p.wx, p.wy, g.i || '🤜'); }
+}
+
+// ---------- 5. smarter gangs ----------
+launchRaid = (o => (R, hq) => { R.lastRaid = { t: S.t, n: fighters(R).length }; o(R, hq); const team = zombies.filter(z => z.gang === R && z.life === 150 && !z.aimed); if (hq || !team.some(z => z.plot)) { let i = 0, lo = 1e9; S.wall.segs.forEach((v, n) => { if (v < lo) { lo = v; i = n; } }); const a = (i + .5) * SEG_A; team.forEach(z => { z.aimed = 1; if (!z.plot) { const r = Math.hypot(z.x, z.y); z.x = Math.cos(a) * r + rnd(-10, 10); z.y = Math.sin(a) * r + rnd(-10, 10); } }); } })(launchRaid);
+const _rd = raiderDied; raiderDied = z => { _rd(z); if (z.gang) { z.gang.grudge = (z.gang.grudge || 0) + 1; z.gang.war = Math.max(30, (z.gang.war || 120) - 12); } };
+// gang vs gang, and the horde hits camps
+function gangClash(A, B) { const a = A.folk.length, b = B.folk.length; if (a < 3 || b < 3) return; const la = 1 + (Math.random() * b * .35 | 0), lb = 1 + (Math.random() * a * .35 | 0); A.folk.splice(0, la); B.folk.splice(0, lb); const w = a - la >= b - lb ? A : B, l = w === A ? B : A, gain = Math.round(l.stock * .4); l.stock -= gain; w.stock += gain; world('⚔️', `${A.n} and ${B.n} fought in the streets. ${w.n} came out on top and took their stores`); if (!l.folk.length) { l.dead = true; world('🏴', `${l.n} is gone, wiped out by ${w.n}`); } }
+
+// ---------- 6. buildings remember; you can hold them ----------
+function bstate(b) { const k = bKey(b); return (S.bs ||= {})[k] || { l: b.kind === 'shed' ? .3 : .55 + .45 * Math.abs(Math.sin(b.x * 12.9 + b.y * 78.2)), s: 0 }; }
+function nearestB(x, y, r) { let best = null, bd = r; for (const b of buildings) { const d = Math.abs(b.x - x) + Math.abs(b.y - y); if (d < bd && b.poly) { bd = d; best = b; } } return best; }
+deplete = (o => (x, y, f) => { o(x, y, f); const b = nearestB(x, y, 40); if (b) { const st = bstate(b); st.l *= .35; st.s = 1; S.bs[bKey(b)] = st; } })(deplete);
+const LOOTKIND = { house: ['food', 'water', 'scrap', 'meds'], apt: ['food', 'water', 'meds', 'scrap'], com: ['scrap', 'ammo', 'elec', 'fuel', 'food'], shed: ['scrap', 'fuel'] };
+window.searchB = k => { const b = buildings.find(x => bKey(x) === k); if (!b) return; pois.push({ id: 'b' + k, ev: true, x: b.x, y: b.y, type: pick(LOOTKIND[b.kind] || LOOTKIND.house), icon: '🔎', name: 'marked building', loot: 1 }); toast('🔎 Marked. The next free drone will search it.'); closeSheet(); };
+window.fortify = k => { const b = buildings.find(x => bKey(x) === k), c = { scrap: 60 + Math.round(b.area / 6), ammo: 10 }; if (!pay(c)) return; (S.forts ||= []).push({ k, x: b.x, y: b.y, hp: 200 + b.area * .4, max: 200 + b.area * .4, cd: 0 }); noise(b.x, b.y, 90, 3); sfx('build', b.x, b.y); toast('🏰 Boarded up and garrisoned. It takes one gun crew.'); feed('🏰', 'Fortified a building'); bldSheet(b); };
+window.unfort = k => { S.forts = S.forts.filter(f => f.k !== k); closeSheet(); };
+const fortAt = (i, j) => (S.forts || []).some(f => { const [a, b] = cellOf(f.x, f.y); return a === i && b === j; });
+bldSheet = (o => b => { o(b); const st = bstate(b), k = bKey(b), own = (cellAt(b) || {}).c, f = (S.forts || []).find(q => q.k === k), c = { scrap: 60 + Math.round(b.area / 6), ammo: 10 };
+  const line = st.l < .15 ? '❌ Picked clean. Nothing left worth the trip.' : st.s ? `〰️ Searched, but ${st.l > .4 ? 'there may be more' : 'not much left'}.` : st.l > .7 ? '🟢 Untouched. Looks promising.' : '🟢 Nobody has been through here yet.';
+  q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row"><div>Scavenging<small>${line}</small></div>${st.l >= .15 ? btn('🔎 Search', `searchB('${k}')`) : ''}</div>${f ? `<div class="row" style="display:block"><b>🏰 Fortified</b><small>Shoots anything within 45 m. Holds this block. ${Math.round(f.hp)}/${Math.round(f.max)}</small><div class="chips">${btn('Abandon', `unfort('${k}')`)}</div></div>` : own && b !== hqB ? `<div class="row"><div>🏰 Fortify and garrison<small>Boards, sandbags, a gun in the window. Anchors this block and takes one gun crew.</small></div>${btn(fmtCost(c), `fortify('${k}')`, !canPay(c))}</div>` : ''}`); })(bldSheet);
+function fortTick() { for (const f of S.forts || []) { if (f.hp <= 0) continue; if ((f.cd -= 1) <= 0 && S.res.ammo > .5) { const z = zombies.filter(z => dist(z, f) < 45).sort((a, b) => dist(a, f) - dist(b, f))[0]; if (z) { f.cd = 1; S.res.ammo -= .4; hit(z, 14); fx.push({ k: 'shot', a: { x: f.x, y: f.y, h: 3 }, b: z, t: .1, c: '#ffe08a' }); sfx('mg', f.x, f.y, .4); } } let n = 0; for (const z of zombies) if (dist(z, f) < 10) { n++; if (n > 8) break; f.hp -= ZTYPES[z.t].dmg * .25; } if (!isNight() && !n && f.hp < f.max && S.res.scrap > 2) { f.hp = Math.min(f.max, f.hp + .8); S.res.scrap -= .04; } if (f.hp <= 0) world('🔥', 'A fortified building fell', true); } S.forts = (S.forts || []).filter(f => f.hp > 0); }
+
+// ---------- 7. land produces what's on it ----------
+const anchored = (i, j, k) => (i === 0 && j === 0) || (S.plots || {})[k] || fortAt(i, j) || S.towers.some(t => { const [a, b] = cellOf(t.x, t.y); return a === i && b === j && !TOWERS[t.type].home; });
+function blockTick() { if (S.t % 30) return; for (const [k, c] of Object.entries(S.cells)) { if (!c.c) continue; const [i, j] = k.split(',').map(Number), m = anchored(i, j, k) ? 1 : .5; for (const p of pois) { if (p.ev || !RES[p.type]) continue; const [a, b] = cellOf(p.x, p.y); if (a === i && b === j) give({ [p.type]: { food: .9, water: 1.2, meds: .22, fuel: .4, scrap: 2, ammo: 1.2, elec: .15 }[p.type] * m * depOf(p.x, p.y) }); } } }
+cellSheet = (o => (i, j) => { o(i, j); const c = cell(i, j), k = key(i, j), ps = pois.filter(p => { const [a, b] = cellOf(p.x, p.y); return a === i && b === j && !p.ev && RES[p.type]; }), kinds = [...new Set(ps.map(p => p.type))];
+  q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row"><div>${c.c ? 'Produces while held' : 'Would produce if held'}<small>${kinds.map(t => RES[t] + ' ' + RES_NAME[t]).join(', ') || 'Nothing special on this block'}${c.c && !anchored(i, j, k) ? ' · <b style="color:var(--amb)">Half rate: anchor it with an outpost, gun or fortified building</b>' : ''}${c.gang != null && S.rivals[c.gang] && !S.rivals[c.gang].dead && !c.c ? ` · Held by ${S.rivals[c.gang].n}` : ''}</small></div></div>`); })(cellSheet);
+claimWhy = (o => (i, j) => { const c = cell(i, j); if (!c.c && c.gang != null && S.t < (c.gangT || 0) && S.rivals[c.gang] && !S.rivals[c.gang].dead) return `${S.rivals[c.gang].n} holds it for now`; return o(i, j); })(claimWhy);
+
+// ---------- 8. the director: the world moves on without you ----------
+const EVENTS = {
+  migration() { const a = rnd(0, 6.28), n = 25 + S.wave * 2, x = Math.cos(a) * 620, y = Math.sin(a) * 620, off = rnd(-180, 180); for (let i = 0; i < n; i++) { spawnZombie('at', x + rnd(-30, 30), y + rnd(-30, 30)); const z = zombies[zombies.length - 1]; z.lure = { x: -x + off, y: -y + off }; z.lureT = 170; z.wave = true; } world('🧟', `A horde of ${n} is migrating across the grid from the ${DIRS[Math.round(a / (Math.PI / 4)) % 8]}`, true); },
+  war() { const g = (S.rivals || []).filter(R => !R.dead && R.folk && R.folk.length > 2); if (g.length >= 2) gangClash(g[0], pick(g.slice(1))); else return false; },
+  crash() { const a = rnd(0, 6.28), d = rnd(180, 380), x = Math.cos(a) * d, y = Math.sin(a) * d, id = 'crash' + S.t; pois.push({ id, ev: true, x, y, type: 'drop', icon: '✈️', name: 'crashed supply plane', loot: 1 }); world('✈️', `A supply plane went down ${Math.round(d)} m out. Everyone saw it`, true); S.crash = { id, at: S.t + 70, g: pick((S.rivals || []).filter(R => !R.dead)) }; },
+  fire() { const b = pick(buildings.filter(b => b.poly && b !== hqB && Math.hypot(b.x, b.y) < 400)); if (!b) return false; (S.fires ||= []).push({ k: bKey(b), x: b.x, y: b.y, t: 60 }); world('🔥', 'A building caught fire. In this wind it could spread'); },
+  strike() { const cs = Object.entries(S.cells).filter(([, c]) => c.i > 40 && !c.c); if (!cs.length) return false; const [k, c] = pick(cs), [i, j] = k.split(',').map(Number); c.i = Math.max(0, c.i - 60); for (let n = 0; n < 6; n++) setTimeout(() => { if (S) { fx.push({ k: 'boom', x: i * CELL + rnd(-50, 50), y: j * CELL + rnd(-50, 50), r: 40, t: .8, c: '255,150,60' }); sfx('boom', i * CELL, j * CELL, .8); } }, n * 350); zombies.forEach(z => { const [a, b] = cellOf(z.x, z.y); if (a === i && b === j) hit(z, 200); }); for (const R of S.rivals || []) for (const cp of R.camps || []) { const [a, b] = cellOf(cp.x, cp.y); if (a === i && b === j) { cp.hp -= 120; if (R.folk) R.folk.splice(0, 3); } } world('🛩️', `Jets from nowhere bombed block ${k}. Who is still flying?`); },
+  plague() { const g = pick((S.rivals || []).filter(R => !R.dead && R.folk && R.folk.length > 3)); if (!g) return false; const n = 2 + (g.folk.length * .3 | 0), c = g.camps[0]; g.folk.splice(0, n); for (let i = 0; i < n * 3; i++) spawnZombie('at', c.x + rnd(-20, 20), c.y + rnd(-20, 20)); world('☣️', `Someone turned inside the ${g.n} camp. ${n} of them are gone`); },
+  refugees() { const a = rnd(0, 6.28), x = Math.cos(a) * 230, y = Math.sin(a) * 230; for (let i = 0; i < 10 + S.wave; i++) { spawnZombie('at', x + rnd(-40, 40), y + rnd(-40, 40), pick(['runner', 'walker'])); zombies[zombies.length - 1].wave = true; } S.nextVisit = 1; world('🏃', 'People are running for your gate with the dead right behind them', true); },
+  dogs() { const a = rnd(0, 6.28); for (let i = 0; i < 6 + S.wave / 2; i++) { spawnZombie('at', Math.cos(a) * 200 + rnd(-15, 15), Math.sin(a) * 200 + rnd(-15, 15), 'dog'); zombies[zombies.length - 1].wave = true; } world('🐕', 'A pack of infected dogs is hunting in broad daylight', true); },
+};
+function directorTick() {
+  S.dirT = (S.dirT ?? 90) - 1;
+  if (S.dirT <= 0) { S.dirT = rnd(110, 230); const k = Object.keys(EVENTS).filter(k => k !== S.lastEv && (k !== 'dogs' || !isNight())); const e = pick(k); if (EVENTS[e]() !== false) S.lastEv = e; }
+  if (S.crash && S.t >= S.crash.at) { const p = pois.find(q => q.id === S.crash.id); if (p && S.crash.g) { p.loot = 0; S.crash.g.stock += 40; world(S.crash.g.i, `${S.crash.g.n} got to the crash site first`); } S.crash = null; }
+  for (const f of S.fires || []) { f.t -= S.camp.wx === 'rain' ? 4 : 1; const st = bstate({ x: f.x, y: f.y, kind: 'house' }); st.l = 0; st.s = 1; S.bs[f.k] = st; for (const t of S.towers) if (dist(t, f) < 14) t.hp -= 1.5; zombies.forEach(z => { if (dist(z, f) < 12) hit(z, 3); }); if (f.t > 15 && (S.fires.length < 7) && Math.random() < .012) { const n = buildings.find(b => b.poly && b !== hqB && dist(b, f) < 38 && dist(b, f) > 4 && !S.fires.some(q => q.k === bKey(b))); if (n) S.fires.push({ k: bKey(n), x: n.x, y: n.y, t: 60 }); } }
+  if (S.fires) S.fires = S.fires.filter(f => f.t > 0);
+}
+// raids that overrun an outpost seize the block
+function seizeTick() { for (const [k, p] of Object.entries(S.plots || {})) if (p.hp <= 0 && !p.seized) { const z = zombies.find(z => z.plot === k && z.gang) || zombies.find(z => z.gang && dist(z, plotXY(k)) < 40); if (!z) continue; const c = S.cells[k]; if (!c || k === '0,0') continue; p.seized = 1; c.c = false; c.gang = z.gang.id; c.gangT = S.t + 240; delete S.plots[k]; S.towers = S.towers.filter(t => { const [a, b] = cellOf(t.x, t.y); return key(a, b) !== k; }); world(z.gang.i, `${z.gang.n} seized block ${k}. They'll hold it until you make them leave`, true); } }
+
+// ---------- 9. drawing: paint on buildings, smoke, forts ----------
+drawOcc = (o => (c, P, k, now) => {
+  o(c, P, k, now);
+  if (map.getZoom() >= 16.4 && S.bs) for (const b of buildings) { if (!b.poly || b === hqB) continue; const [x, y] = P(b.x, b.y); if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue; const st = S.bs[bKey(b)], u = Math.max(4, k * 2.2), ly = y - b.h * k * .55;
+    if (!st) { c.fillStyle = 'rgba(155,225,93,.55)'; c.beginPath(); c.arc(x, ly, Math.max(1.5, u * .28), 0, 7); c.fill(); continue; }
+    if (st.l < .15) { c.strokeStyle = 'rgba(210,50,30,.9)'; c.lineWidth = Math.max(1.5, u * .35); c.beginPath(); c.moveTo(x - u, ly - u); c.lineTo(x + u, ly + u); c.moveTo(x + u, ly - u); c.lineTo(x - u, ly + u); c.stroke(); }
+    else { c.strokeStyle = 'rgba(230,190,50,.9)'; c.lineWidth = Math.max(1.5, u * .3); c.beginPath(); c.moveTo(x - u, ly + u * .7); c.lineTo(x + u, ly - u * .7); c.stroke(); } }
+  for (const f of S.forts || []) { const [x, y] = P(f.x, f.y), w = 26; c.font = '14px system-ui'; c.textAlign = 'center'; c.fillText('🏰', x, y - 16); c.fillStyle = '#000a'; c.fillRect(x - w / 2, y - 8, w, 3); c.fillStyle = '#9be15d'; c.fillRect(x - w / 2, y - 8, w * f.hp / f.max, 3); }
+  for (const f of S.fires || []) { const [x, y] = P(f.x, f.y), u = Math.max(6, k * 4); for (let i = 0; i < 5; i++) { const a = now / 130 + i * 1.4, fl = .6 + .4 * Math.sin(a * 2); c.fillStyle = `rgba(255,${100 + 90 * fl | 0},30,.8)`; c.beginPath(); c.arc(x + Math.sin(a) * u * .8, y - u * .3 - i * u * .25, u * .4 * fl, 0, 7); c.fill(); const s = (now / 1400 + i / 5) % 1; c.fillStyle = `rgba(50,45,40,${.4 * (1 - s)})`; c.beginPath(); c.arc(x + s * u * 2, y - u - s * u * 6, u * (.4 + s), 0, 7); c.fill(); } }
+  for (const [ck, cl] of Object.entries(S.cells)) if (!cl.c && cl.gang != null && S.t < (cl.gangT || 0)) { const [i, j] = ck.split(',').map(Number), [x, y] = P(i * CELL - CELL / 2, j * CELL + CELL / 2), s = CELL * k; c.strokeStyle = 'rgba(208,69,58,.7)'; c.setLineDash([4, 8]); c.lineWidth = 2; c.strokeRect(x, y, s, s); c.setLineDash([]); }
+  for (const t of S.towers) if (t.unmanned) { const [x, y] = P(t.x, t.y); c.font = '10px system-ui'; c.textAlign = 'center'; c.fillText('👤', x + 8, y - 12); }
+})(drawOcc);
+window.worldSheet = () => openSheet(`<h3>🌍 The grid</h3><p class="explain">Things happen out there whether you're watching or not.</p><div class="row"><div>Gun crews<small>${S.unmanned ? `<b style="color:var(--amb)">${S.unmanned} guns unmanned, firing at a third of their speed.</b> Assign more guards.` : 'Every gun is manned.'} 2 per guard, 1 per 2 wall crew, 1 per fighting robot, 4 free.</small></div><b>${Math.max(0, crewCap())}</b></div>${S.adaptTo ? `<div class="row"><div>🧬 Horde adapted to your ${S.adaptTo} weapons<small>Mix up your guns to break it.</small></div></div>` : ''}<div class="row"><div>Slow down for big events<small>Drops 4× to 1× when something serious happens</small></div>${btn(S.f.noAlarm ? 'OFF' : 'ON', 'S.f.noAlarm=!S.f.noAlarm;worldSheet()')}</div><h4>What's been happening</h4>${(S.wlog || []).map(e => `<div class="memo"><small>Day ${e.d}</small> ${e.icon} ${e.txt}</div>`).join('') || '<small style="color:var(--dim)">Quiet, so far.</small>'}`, worldSheet);
+alertList = (o => () => { const A = o(); if (S.unmanned) A.push({ pri: 60, icon: '👤', text: `${S.unmanned} guns unmanned`, act: "survTab('jobs')" }); return A.sort((a, b) => b.pri - a.pri).slice(0, 3); })(alertList);
+loopBody = (o => now => { o(now); if (S && S.people && speed) brawlTick(.05 * speed); })(loopBody);
+worldTick = (o => () => { o(); crewTick(); gearTick(); fortTick(); blockTick(); directorTick(); seizeTick(); if (S.t % 5 === 0) for (const R of S.rivals || []) { for (const cp of R.camps || []) if (!cp.snap) { cp.snap = 1; const b = nearestB(cp.x, cp.y, 90); if (b) { cp.x = b.x + 14; cp.y = b.y + 14; } } } })(worldTick);
 
 // ================= radio =================
 function radio(from, msg) {
