@@ -157,6 +157,8 @@ button.on{background:var(--grime),linear-gradient(#c2c95a,#7f8a2c)!important;col
 .persona,.lifebox .row{border-radius:3px!important}
 .perk{display:inline-block;font:700 11px system-ui;padding:2px 7px;background:#c9a23a;color:#1a1408;border-radius:2px;transform:rotate(-1deg)}
 .facestrip{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.facestrip img{width:38px;height:38px;border:1px solid #5a4c34}
+.skgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;margin-top:4px}.skgrid span{font-size:11px;color:var(--dim)}.skgrid i{display:block;height:4px;background:#0006}.skgrid b{display:block;height:100%;background:#c9a23a}
+.tmore{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:30vh;overflow:auto}.tmore button{font-size:12px;padding:6px 8px;text-align:left}.tjob{width:100%;display:flex;flex-wrap:wrap;gap:4px;align-items:center}.tjob small{color:var(--dim);width:100%}
 #trailer{position:fixed;inset:0;z-index:2000;background:#000;display:flex;align-items:center;justify-content:center}
 #trailer video{width:100%;height:100%;object-fit:contain;background:#000}
 #tr-skip{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 14px);background:#000a;border-color:#fff4;box-shadow:none}
@@ -394,7 +396,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.8.0";
+const APP_VERSION = "1.9.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
 const $ = id => document.getElementById(id);
@@ -1092,7 +1094,7 @@ function zombieThink(z, dt) {
 }
 
 // ================= towers =================
-const dmgMul = () => 1 + .2 * S.up.work + .03 * S.camp.jobs.guard + .06 * (S.up.arms || 0);
+const dmgMul = () => 1 + .2 * S.up.work + .03 * S.camp.jobs.guard + .06 * (S.up.arms || 0) + (S.people ? S.people.filter(p => p.role === 'guard').reduce((a, p) => a + (p.sk ? p.sk.shoot : 2), 0) * .006 : 0);
 function towerThink(t, dt, overload) {
   const d = TOWERS[t.type]; if (!d.rate || (t.bp ?? 1) < 1) return;
   t.cd -= dt;
@@ -1162,7 +1164,7 @@ function worldTick() {
   // economy
   const m = 1 + .5 * S.up.radio;
   S.res.scrap += (.35 * held() * m) + S.surv * .05;
-  S.res.food += .06 * held() * m - S.surv * .008 * (S.camp.ration ? .6 : 1);
+  S.res.food += .06 * held() * m - S.surv * .008 * (S.camp.ration ? .6 : 1) * (1 - Math.min(.33, (S.camp.jobs.cook || 0) * .2 * skillMul('cook')));
   campTick(); syncPeople(); infectionTick(); wellTick(); waterTick(); upkeepTick(); robotUpkeep(); wallRepairTick(); expTick(); visitTick(); disputeTick(); rivalTick(); buildTick(); wallPlanTick(); occTick(); rulesTick(); peopleTick(); banditTick(); assignHomes(); spoilTick(); if (S.t % 120 === 60 && Math.random() < .45) hardshipEvent(); radioWorldTick();
   if (S.t % 30 === 0 && S.dep) for (const k in S.dep) S.dep[k] = Math.min(1, S.dep[k] + .008);
   if (S.up.armory && S.res.scrap > 5) { S.res.scrap -= .3 * S.up.armory; S.res.ammo += .5 * S.up.armory; }
@@ -1429,7 +1431,7 @@ function fixJobs() {
   for (const k of ['guard', 'mech', 'clean', 'medic', 'scav', 'farm', 'water', 'wallc']) while (tot > able && J[k] > 0) { J[k]--; tot--; }
 }
 const idle = () => Math.max(0, S.surv - S.camp.sick - Object.values(S.camp.jobs).reduce((a, b) => a + b, 0));
-const resCap = k => (k === 'scrap' || k === 'ammo' ? 600 : k === 'elec' ? 80 : 240) * (1 + .5 * (S.up.storage || 0)) + depotCap(k) + shedCap(k);
+const resCap = k => (k === 'scrap' || k === 'ammo' ? 600 : k === 'elec' ? 80 : 240) * (1 + .5 * (S.up.storage || 0)) + depotCap(k) + shedCap(k) + (S && S.storeBonus || 0);
 let RATE = {};
 function campTick() {
   const C = S.camp, J = C.jobs, n = S.surv, sea = season();
@@ -2637,10 +2639,11 @@ function militiaThink(dt) {
   const threat = zombies.filter(z => Math.hypot(z.x, z.y) < 150);
   if (threat.length) S.alertT = 8; else S.alertT = Math.max(0, (S.alertT || 0) - dt);
   if (S.alertT > 0) {
-    const fighters = S.people.filter(p => !p.out && !p.quar && p.hp > 35 && !(p.inf && !p.hid) && (p.role === 'guard' || (S.callArms && p.role !== 'medic')));
+    const fighters = S.people.filter(p => !p.out && !p.quar && p.hp > 35 && !(p.inf && !p.hid) && (p.role === 'guard' || (S.callArms && drafted(p))));
     for (const p of fighters) { p.out = true; militia.push({ p, x: rnd(-6, 6), y: rnd(-6, 6), hp: p.hp, cd: rnd(0, .5), person: true, wob: rnd(0, 6) }); }
   }
   for (const m of [...militia]) {
+    if ((m.hp < 28 || m.p.quar) && m.hp > 0) { m.p.out = false; m.p.hp = m.hp; militia.splice(militia.indexOf(m), 1); speak(m.p, '🩸'); moodlet(m.p, 'Barely got out of that fight', -8, 200); continue; }
     const p = m.p, coward = p.trait === 'coward' && m.hp < 70, z = nearestZ(m, 70);
     const mv = (tx, ty, s) => { const dx = tx - m.x, dy = ty - m.y, l = Math.hypot(dx, dy); if (l > .5) { m.x += dx / l * s * dt; m.y += dy / l * s * dt; m.wob += dt * 6; m.ang = Math.atan2(dy, dx); } return l; };
     if (S.alertT > 0 && z && !coward && Math.hypot(m.x, m.y) < 140) {
@@ -2650,7 +2653,7 @@ function militiaThink(dt) {
       m.cd -= dt;
       const G = GEAR[p.gear || 'fists'], gr = Math.max(G.r, 3.5); if (m.cd <= 0 && d < gr) {
         const armed = S.res.ammo >= G.a; if (armed) S.res.ammo -= G.a;
-        hit(z, (armed ? G.d : 2) * (p.trait === 'marks' ? 1.6 : 1) * (1 + .1 * S.up.armory), null);
+        hit(z, (armed ? G.d : 2) * combatMul(p, G.r > 5) * (1 + .1 * S.up.armory), null); train(p, G.r > 5 ? 'shoot' : 'melee', .004);
         fx.push({ k: 'shot', a: { x: m.x, y: m.y, h: 1.3 }, b: z, t: .07, c: '#ffe08a' }); m.fired = performance.now();
         sfx(G.a ? 'pistol' : 'thud', m.x, m.y); m.cd = G.cd; if (G.a) noise(m.x, m.y, 70, .2); else fightFx(m.x, m.y, G.i || '🤜');
       }
@@ -2872,7 +2875,7 @@ function wallBlock(z, tgt, d, dt) {
 function wallRepairTick() {
   const wear = segMax() * .00012 * (S.camp.wx === 'rain' || S.camp.wx === 'snow' ? 2 : 1); S.wall.segs = S.wall.segs.map(h => h > 0 ? Math.max(1, h - wear) : 0);
   const crew = S.people.filter(p => p.role === 'wallc' && !p.out), night = isNight();
-  let rate = .4 + crew.reduce((a, p) => a + (p.trait === 'tinker' ? 1.5 : 1), 0) * (night ? 1.2 : 3.6) * (1 + .15 * S.up.work) * skillMul('wallc');
+  let rate = .1 + crew.reduce((a, p) => a + (p.trait === 'tinker' ? 1.5 : 1), 0) * (night ? 1.2 : 3.6) * (1 + .15 * S.up.work) * skillMul('wallc');
   const mx = segMax(), per = .012 * (1 + S.wall.tier * .35), segs = S.wall.segs;
   const order = segs.map((h, i) => [h, i]).filter(([h]) => h < mx).sort((a, b) => a[0] - b[0]);
   S.wall.work = [];
@@ -3068,7 +3071,8 @@ function moreSheet() {
     ${tile('🏆', 'Goals', 'baseSheet()', OBJECTIVES[S.obj] ? OBJECTIVES[S.obj].t : 'All done')}
     ${tile('🎯', 'Center', "closeSheet();map.setView([S.lat,S.lon],17)", 'Map')}
     ${tile(AU.on ? '🔊' : '🔇', 'Sound', 'soundSheet()', AU.on ? 'Levels' : 'Muted')}
-    ${tile('📖', 'Guide', 'S.tut=0;tutRender();closeSheet()', 'Replay')}
+    ${tile('📖', 'How it works', 'guideSheet()', 'Explained')}
+    ${tile('🎓', 'Tutorial', 'S.tut=0;tutRender();closeSheet()', 'Replay')}
     ${tile('🗺️', 'Territory', 'territorySheet()', plotList(null, false).length + ' outposts')}
     ${tile('📁', 'Case 0047', 'caseSheet()', ((S.case || {}).n || 0) + '/' + CASE.length + ' evidence')}
     ${tile('ℹ️', 'About', 'aboutSheet()', 'Updates · website')}
@@ -6682,7 +6686,7 @@ zombieThink = (o => (z, dt) => {
 })(zombieThink);
 // anyone reached fights back with what they carry; guards use their gear at range
 function brawlTick(dt) {
-  for (const p of S.people) { if (p.out || p.inside || p.wx == null) continue; p.mcd = (p.mcd || 0) - dt; if (p.mcd > 0) continue; const z = zombies.find(q => Math.hypot(q.x - p.wx, q.y - p.wy) < 3.5 && !q.dead); if (!z) continue; if (p.trait === 'coward' && Math.random() < .5) { p.mcd = 1; continue; } const g = GEAR[p.gear || 'fists']; p.mcd = Math.max(.8, g.cd); hit(z, Math.max(g.d * .8, 3) * (p.trait === 'tough' ? 1.4 : 1)); speak(p, g.i || '🤜'); fightFx(p.wx, p.wy, g.i || '🤜'); }
+  for (const p of S.people) { if (p.out || p.inside || p.wx == null) continue; p.mcd = (p.mcd || 0) - dt; if (p.mcd > 0) continue; const z = zombies.find(q => Math.hypot(q.x - p.wx, q.y - p.wy) < 3.5 && !q.dead); if (!z) continue; if (Math.random() > .3 + skillOf(p, 'melee') * .1) { p.mcd = 1; speak(p, '😱'); continue; } const g = GEAR[p.gear || 'fists']; p.mcd = Math.max(.8, g.cd); hit(z, Math.max(g.d * .8, 3) * combatMul(p, false)); train(p, 'melee', .01); speak(p, g.i || '🤜'); fightFx(p.wx, p.wy, g.i || '🤜'); }
 }
 
 // ---------- 5. smarter gangs ----------
@@ -6749,6 +6753,176 @@ window.worldSheet = () => openSheet(`<h3>🌍 The grid</h3><p class="explain">Th
 alertList = (o => () => { const A = o(); if (S.unmanned) A.push({ pri: 60, icon: '👤', text: `${S.unmanned} guns unmanned`, act: "survTab('jobs')" }); return A.sort((a, b) => b.pri - a.pri).slice(0, 3); })(alertList);
 loopBody = (o => now => { o(now); if (S && S.people && speed) brawlTick(.05 * speed); })(loopBody);
 worldTick = (o => () => { o(); crewTick(); gearTick(); fortTick(); blockTick(); directorTick(); seizeTick(); if (S.t % 5 === 0) for (const R of S.rivals || []) { for (const cp of R.camps || []) if (!cp.snap) { cp.snap = 1; const b = nearestB(cp.x, cp.y, 90); if (b) { cp.x = b.x + 14; cp.y = b.y + 14; } } } })(worldTick);
+
+
+// ================= the camp runs itself: skills, moodlets, initiative, orders, gate, houses, real talk =================
+// Why Sims characters feel alive: every mood has a visible cause, what they can do comes from who they are and grows with use,
+// and they act on their own, so the player steers instead of pressing every button.
+
+// ---------- 1. skills ----------
+const SK = { shoot: ['🎯', 'Shooting'], melee: ['🥊', 'Close combat'], medic: ['🩺', 'Medicine'], build: ['🔨', 'Building'], tech: ['🔧', 'Machines'], farm: ['🌱', 'Growing'], cook: ['🍳', 'Cooking'], scav: ['🎒', 'Scavenging'], lead: ['📣', 'Leadership'], charm: ['💬', 'People'] };
+const BIOSK = { 'ex-teacher': ['lead', 'charm'], bartender: ['charm', 'melee'], 'night-shift nurse': ['medic', 'charm'], 'long-haul trucker': ['tech', 'scav'], 'college student': ['tech', 'charm'], 'retired cop': ['shoot', 'lead'], 'line cook': ['cook', 'melee'], plumber: ['build', 'tech'], 'IT guy': ['tech', 'scav'], 'dairy farmer': ['farm', 'shoot'], 'mail carrier': ['scav', 'charm'], 'youth pastor': ['lead', 'charm'], 'car salesman': ['charm', 'scav'], EMT: ['medic', 'shoot'], librarian: ['lead', 'farm'], roofer: ['build', 'melee'], 'ex-raider': ['shoot', 'melee'] };
+const TRAITSK = { tough: 'melee', marks: 'shoot', nurse: 'medic', tinker: 'tech', green: 'farm', cheer: 'charm' };
+const JOBSK = { guard: 'shoot', wallc: 'build', mech: 'tech', farm: 'farm', water: 'build', scav: 'scav', medic: 'medic', clean: 'lead', cook: 'cook' };
+JOBS.cook = { n: 'Cook', i: '🍳', c: '#a0683a', d: 'Stretches food by up to a third and lifts everyone\'s mood' };
+function skillsOf(p) { if (p.sk) return p.sk; p.bio ??= pick(BIOS); const s = {}; for (const k in SK) s[k] = Math.random() * 3; for (const k of BIOSK[p.bio] || []) s[k] = 4 + Math.random() * 3; if (TRAITSK[p.trait]) s[TRAITSK[p.trait]] = Math.max(s[TRAITSK[p.trait]], 6); if (p.trait === 'coward') { s.shoot *= .4; s.melee *= .3; } return p.sk = s; }
+const skillOf = (p, k) => skillsOf(p)[k] || 0;
+const bestSkill = p => Object.entries(skillsOf(p)).sort((a, b) => b[1] - a[1])[0][0];
+function train(p, k, n = .03) { const s = skillsOf(p), was = s[k] | 0; s[k] = Math.min(10, s[k] + n); if ((s[k] | 0) > was && (s[k] | 0) >= 3) { story(p, `Got better at ${SK[k][1].toLowerCase()} (level ${s[k] | 0})`, SK[k][0]); if ((s[k] | 0) >= 6) feed(SK[k][0], `${fn(p)} is becoming really good at ${SK[k][1].toLowerCase()}`); } }
+skillMul = (o => role => { const g = S.people.filter(p => p.role === role && !p.quar), k = JOBSK[role]; return o(role) * (g.length && k ? .75 + g.reduce((a, p) => a + skillOf(p, k), 0) / g.length * .1 : 1); })(skillMul);
+const drafted = p => { const f = q => Math.max(skillOf(q, 'shoot'), skillOf(q, 'melee')); if (f(p) < 3 || p.role === 'medic') return false; const top = S.people.filter(q => !q.quar).sort((a, b) => f(b) - f(a)).slice(0, Math.max(1, Math.ceil(S.people.length / 3))); return top.includes(p); };
+const combatMul = (p, ranged) => { const s = skillOf(p, ranged ? 'shoot' : 'melee'); return (.45 + s * .17) * (p.perks && p.perks.includes('Veteran') ? 1.2 : 1) * (p.grief ? .8 : 1); };
+
+// ---------- 2. moodlets: every feeling has a cause you can read ----------
+function moodlets(p) {
+  const L = [], N = p.need || {}, add = (t, v) => L.push([t, v]), P = p.persona || {}, C = S.camp, k = JOBSK[p.role], mine = k ? skillOf(p, k) : 0, top = bestSkill(p);
+  if (N.food < 25) add('Starving', -18); else if (N.food > 70) add('Well fed', 4);
+  if (N.rest < 25) add('Exhausted', -14); else if (N.rest > 75) add('Rested', 4);
+  if (N.safety < 30) add('Terrified', -14); if (N.social < 25) add('Lonely', -10); else if (N.social > 75) add('Good company', 5);
+  if (p.grief) add('Grieving', -22); if (p.partner) add('In love', 12); if (p.friend) add('Has a close friend', 5); if (p.grudge) add('Holding a grudge', -6);
+  if (k && mine >= 5) add('Doing what they\'re good at', 8); else if (k && mine < 2 && skillOf(p, top) >= 5) add(`Wasted here. They should be doing ${SK[top][1].toLowerCase()}`, -7);
+  if (!JOBS[p.role] && !p.quar) add('Nothing useful to do', -5); if (p.quar) add('Locked in quarantine', -20); if (p.hp < 50) add('In pain', -10);
+  if (C.hyg < 35) add('The camp is filthy', -8); if ((C.jobs.cook || 0) && S.res.food > 5) add('Hot meals', 6); if (C.ration) add('On short rations', -7);
+  if (S.surv >= survCap()) add('Overcrowded', -6); if (p.home && p.home !== 'hq') add('A room of their own', 7); if (homeOf('fire').length && isNight()) add('Fire to sit by', 3); if (homeOf('flowers').length) add('Something pretty', 2);
+  if (S.gate && !S.gate.open && !isNight() && S.gate.shutT > 90) add('Cooped up behind a shut gate', -5); if (P.sched === 'owl' && isNight()) add('Night owl, wide awake', 2);
+  for (const m of p.ml || []) if (m.u > S.t) add(m.t, m.v); return L;
+}
+function moodlet(p, t, v, secs = 120) { (p.ml ||= []).filter(m => m.u > S.t); p.ml = p.ml.filter(m => m.t !== t && m.u > S.t); p.ml.push({ t, v, u: S.t + secs }); }
+function moodTick() { if (S.t % 5) return; for (const p of S.people) { ensureLife(p); const base = 52 + moodlets(p).reduce((a, [, v]) => a + v, 0), m = p.mood ?? 60; p.mood = Math.max(0, Math.min(100, m + (base - m) * .06)); } }
+
+// ---------- 3. initiative: people notice what needs doing ----------
+function initiativeTick() {
+  if (S.t % 6 || !S.people.length) return; const free = S.people.filter(p => !p.out && !p.quar && !p.inside && p.act && p.act.act !== 'sleep' && p.hp > 30 && (p.need || {}).rest > 15); if (!free.length) return; const p = pick(free), s = skillsOf(p);
+  const say = (e, msg, sk) => { speak(p, e); p.bub = 2; train(p, sk, .05); moodlet(p, 'Got something done', 3, 90); if (Math.random() < .25) feed(e, msg); };
+  const acts = [];
+  if (s.medic >= 3) { const h = S.people.filter(q => q !== p && q.hp < 70 && !q.out)[0]; if (h && S.res.meds >= .2) acts.push([s.medic, () => { S.res.meds -= .2; h.hp = Math.min(100, h.hp + 6 + s.medic * 2); bond(h, p, 5); moodlet(h, `${fn(p)} patched me up`, 6); say('🩹', `${fn(p)} stopped to patch up ${fn(h)}`, 'medic'); }]); }
+  if (s.tech >= 3 && S.res.scrap > 3) { const g = S.towers.filter(t => !TOWERS[t.type].home && t.hp < TOWERS[t.type].hp * lvlMul(t) * .8).sort((a, b) => a.hp - b.hp)[0]; if (g) acts.push([s.tech, () => { S.res.scrap -= 2; g.hp = Math.min(TOWERS[g.type].hp * lvlMul(g), g.hp + 4 + s.tech * 2); fx.push({ k: 'txt', x: g.x, y: g.y, s: '🔧', t: .8 }); say('🔧', `${fn(p)} fixed up the ${TOWERS[g.type].name.toLowerCase()} on their own`, 'tech'); }]); }
+  if (s.build >= 3 && S.res.scrap > 4) { const v = Math.min(...S.wall.segs); if (v < segMax() * .7) acts.push([s.build, () => { const i = S.wall.segs.indexOf(v); S.wall.segs[i] = Math.min(segMax(), v + 8 + s.build * 4); S.res.scrap -= 1.5; say('🔨', `${fn(p)} shored up the ${segDir(i)} wall without being asked`, 'build'); }]); }
+  if (s.farm >= 2) { const b = homeOf('bed').find(t => t.grow >= 1); if (b) acts.push([s.farm + 2, () => { if (harvest(b, p.id)) say('🧺', `${fn(p)} brought in a harvest on their break`, 'farm'); }]); }
+  if (s.cook >= 4 && S.res.food > 8 && !(S.camp.jobs.cook) && !isNight()) acts.push([s.cook * .6, () => { S.res.food -= 1; S.people.forEach(q => moodlet(q, `${fn(p)} cooked something real`, 7, 150)); say('🍳', `${fn(p)} cooked for everyone. It smelled like before`, 'cook'); }]);
+  if (s.charm >= 3 || s.lead >= 3) { const sad = S.people.filter(q => q !== p && (q.mood ?? 60) < 35 && !q.out)[0]; if (sad) acts.push([Math.max(s.charm, s.lead) + 1, () => { sad.mood += 6 + s.charm; bond(sad, p, 7); moodlet(sad, `${fn(p)} sat with me`, 8); say('🫂', `${fn(p)} sat with ${fn(sad)} until they felt better`, 'charm'); }]); }
+  if (s.scav >= 3 && !isNight() && S.t % 18 === 0) acts.push([s.scav * .5, () => { const g = pick([{ scrap: 3 + s.scav }, { food: 1 + s.scav * .3 }]); give(g); say('🎒', `${fn(p)} turned up ${fmtCost(g)} around the yard`, 'scav'); }]);
+  if (!acts.length) return; acts.sort((a, b) => b[0] - a[0] + rnd(-2, 2)); acts[0][1]();
+}
+function trainTick() { for (const p of S.people) { const k = JOBSK[p.role]; if (k) train(p, k, .35); const g = GEAR[p.gear || 'fists']; if (p.role === 'guard') train(p, g.r > 5 ? 'shoot' : 'melee', .2); } }
+onDawn = (o => () => { o(); trainTick(); })(onDawn);
+
+// ---------- 4. standing orders ----------
+const ORD = { jobs: ['🧑‍💼', 'Foreman', 'Puts people on the jobs the camp needs, each on what they\'re best at'], gate: ['🚪', 'Gate discipline', 'Opens the gate at dawn, shuts it before dusk'], curfew: ['🏠', 'Siege curfew', 'During an attack, non-fighters get inside the HQ'], arms: ['⚔️', 'Call to arms', 'If the wall is breached, your best third of fighters drop their work and fight. The wounded fall back'], repair: ['🛠️', 'Repair crew', 'Pays scrap to repair badly damaged guns'], burn: ['🔥', 'Burn the dead', 'Burns corpses when they pile up (uses fuel)'], service: ['🛸', 'Drone service', 'Services worn drones with scrap'], pick: ['🧺', 'Harvest rota', 'Picks ripe beds nobody is tending'], meds: ['💊', 'Medical stock', 'Crafts medicine when it runs low and supplies allow'] };
+const ord = k => (S.orders ||= {})[k] !== false;
+window.toggleOrd = k => { S.orders ||= {}; S.orders[k] = !ord(k); survSheet(); };
+rulesBody = (o => () => `<h4>Standing orders</h4><p class="explain">Turn these off only if you'd rather do it by hand.</p>${Object.entries(ORD).map(([k, [i, n, d]]) => `<div class="row"><div class="rl"><span class="ico" style="--c:#4a5a7a">${i}</span><div>${n}<small>${d}</small></div></div>${btn(ord(k) ? 'ON' : 'OFF', `toggleOrd('${k}')`)}</div>`).join('')}<h4>Camp rules</h4>${o()}`)(rulesBody);
+function foreman() {
+  const J = S.camp.jobs, all = S.people.filter(p => !p.out && !p.quar && p.hp > 20 && !(p.inf && !p.hid)), mine = all.filter(p => S.t - (p.jobSet ?? -9999) < 400), ppl = all.filter(p => !mine.includes(p)), n = all.length; if (!n) return; for (const k in JOBS) J[k] ??= 0;
+  const guns = S.towers.filter(isGun).length, foodMin = (RATE.food || 0), want = {};
+  want.farm = S.res.food < 40 || foodMin < 0 ? Math.max(1, Math.ceil(homeOf('bed').length / 3), Math.ceil(n * .25)) : Math.max(1, Math.ceil(homeOf('bed').length / 3));
+  want.water = S.res.water < 25 ? Math.max(2, n >> 2) : S.res.water < 60 && !(S.water && S.water.on) ? 2 : S.res.water < 90 && !(S.water && S.water.on) ? 1 : 0;
+  want.medic = S.camp.sick || S.people.some(p => p.hp < 50) ? Math.min(Math.ceil(n / 3), 1 + (S.camp.sick >> 1)) : n > 7 ? 1 : 0;
+  want.clean = S.camp.hyg < 30 ? Math.max(2, Math.ceil(n / 3)) : S.camp.hyg < 55 || S.camp.corpses > 8 ? Math.max(1, n >> 2) : n > 6 ? 1 : 0;
+  want.mech = S.towers.some(t => t.hp < TOWERS[t.type].hp * .6) || S.robots.some(r => r.broken) ? Math.max(1, n >> 3) : n > 8 ? 1 : 0;
+  want.wallc = wallPct() < .9 ? Math.max(1, Math.min(3, n >> 2)) : 1; want.cook = n >= 6 ? 1 : 0;
+  want.guard = Math.min(Math.ceil(n * .4), Math.max(n >= 4 ? 1 : 0, S.wave > 3 && n >= 6 ? 2 : 0, Math.ceil(Math.max(0, guns - 4) / 2) + (S.wave > 5 ? 1 : 0)));
+  const pool = ppl.slice(), order = S.camp.hyg < 35 || S.camp.sick > 1 ? ['clean', 'medic', 'water', 'farm', 'guard', 'wallc', 'mech', 'cook'] : ['medic', 'farm', 'water', 'guard', 'wallc', 'mech', 'clean', 'cook'];
+  for (const k in J) J[k] = 0; for (const p of mine) { if (JOBS[p.role]) { J[p.role]++; if (want[p.role]) want[p.role]--; } } const assign = (role, m) => { for (let i = 0; i < m && pool.length; i++) { pool.sort((a, b) => skillOf(b, JOBSK[role]) - skillOf(a, JOBSK[role])); const p = pool.shift(); p.role = role; J[role]++; } };
+  for (const r of order) assign(r, want[r] || 0); assign('scav', S.gate && !S.gate.open && !isNight() ? 0 : Math.min(pool.length, Math.max(1, pool.length >> 1))); for (const p of pool) { const r = Object.keys(want).sort((a, b) => skillOf(p, JOBSK[b]) - skillOf(p, JOBSK[a]))[0]; p.role = r; J[r]++; }
+}
+function ordersTick() {
+  if (ord('jobs') && S.t % 25 === 3) foreman();
+  if (ord('repair') && S.t % 8 === 0 && S.res.scrap > 60) { const g = S.towers.find(t => !TOWERS[t.type].home && t.hp < TOWERS[t.type].hp * lvlMul(t) * .45); if (g) { g.hp += TOWERS[g.type].hp * .3; S.res.scrap -= 12; } }
+  if (ord('burn') && S.camp.corpses > 10 && S.res.fuel > 3.5 && S.t % 20 === 0) { S.camp.corpses = Math.max(0, S.camp.corpses - 15); S.res.fuel -= 3; noise(0, 0, 90, 2); feed('🔥', 'The burial detail burned the dead'); }
+  if (ord('service') && S.t % 15 === 0 && S.res.scrap > 40 && S.res.elec > 2) { const d = drones.find(d => d.st === 'idle' && (d.wear || 0) > .6); if (d) { d.wear = 0; S.res.scrap -= 12; S.res.elec -= 1; } }
+  if (ord('pick') && S.t % 10 === 0) homeOf('bed').filter(t => t.grow >= 1 && !t.tended).slice(0, 1).forEach(t => harvest(t));
+  if (ord('meds') && S.t % 30 === 0 && S.res.meds < 6 && S.res.scrap > 80 && S.res.food > 25) { S.res.scrap -= 20; S.res.food -= 4; S.res.meds += 2; }
+  if (ord('meds') && S.t % 15 === 0 && S.res.meds >= 3) { const v = S.people.find(q => q.inf && !q.hid && q.inf < 75), m = S.people.filter(q => q.role === 'medic' && !q.inf && !q.out).sort((a, b) => skillOf(b, 'medic') - skillOf(a, 'medic'))[0]; if (v && m) { S.res.meds -= 3; train(m, 'medic', .4); if (Math.random() < .2 + skillOf(m, 'medic') * .07) { v.inf = 0; v.hid = false; v.hp = Math.max(30, v.hp - 25); v.quar = false; v.ruled = false; bond(v, m, 30); remember(v, `${fn(m)} cut the bite out and saved my life`); toast(`🩹 ${fn(m)} saved ${fn(v)} from the bite`); feed('🩹', `${fn(m)} saved ${fn(v)} from a bite`); } } }
+  if (ord('arms')) S.callArms = S.wall.segs.some(v => v <= 0) && zombies.some(z => Math.hypot(z.x, z.y) < wallR());
+  if (S.t > 40 && !S.people.length && S.surv <= 0 && !over) { toast('⚰️ There is nobody left.'); S.hp = -1; }
+}
+indoorTask = (o => p => { if (ord('curfew') && (S.alertT || 0) > 0 && isNight() && p.role !== 'guard' && !S.callArms) return 'eat'; return o(p); })(indoorTask);
+
+// ---------- 5. the wall is not a force field; and it has a gate ----------
+for (const T of WALL_TIERS) T.hp = Math.round(T.hp * .6);
+const WP = {};
+function gateOf() { if (!S.gate) S.gate = { seg: 0, open: true, shutT: 0 }; return S.gate; }
+window.setGate = open => { const g = gateOf(); g.open = open; g.shutT = 0; g.manual = S.t; sfx('thud', 0, 0, .5); toast(open ? '🚪 Gate open: people, robots and whatever else can walk through' : '🚪 Gate shut: nobody goes out to scavenge'); if (sheetFn) sheetFn(); };
+function gateTick() { const g = gateOf(); g.shutT = g.open ? 0 : g.shutT + 1; if (ord('gate') && S.t - (g.manual ?? -999) > 200) { const tod = S.clock % DAY, dusk = DAY * .62, should = tod > 12 && tod < dusk - 15 && !zombies.some(z => Math.hypot(z.x, z.y) < wallR() + 30 && !ZTYPES[z.t].human && z.wave); if (should !== g.open) { g.open = should; g.shutT = 0; if (!should) feed('🚪', 'The gate was shut for the night'); } } }
+wallBlock = (o => (z, tgt, d, dt) => {
+  if (z.over) return false; const g = S.gate, i = segAt(z.x, z.y);
+  if (g && g.open && Math.abs(((i - g.seg + WALL_SEGS + 14) % WALL_SEGS) - 14) <= 1) return false;
+  const blocked = o(z, tgt, d, dt); if (!blocked || d.human) return blocked;
+  // the dead pile up against a wall, and the pile becomes a ramp
+  WP[i] = (WP[i] || 0) + 1; if (WP[i] >= 9 && Math.random() < dt * .25) { z.over = true; if (S.t - (S.rampMsg ?? -99) > 25) { S.rampMsg = S.t; toast(`🧟 They're piling up on the ${segDir(i)} wall and climbing over each other!`); } }
+  // an open gate draws them along the wall
+  if (g && g.open) { const a = Math.atan2(z.y, z.x), ga = (g.seg + .5) * SEG_A, da = Math.atan2(Math.sin(ga - a), Math.cos(ga - a)), R = Math.hypot(z.x, z.y), na = a + Math.sign(da) * z.spd * dt / R; z.x = Math.cos(na) * R; z.y = Math.sin(na) * R; }
+  return blocked;
+})(wallBlock);
+loopBody = (o => now => { for (const k in WP) delete WP[k]; o(now); })(loopBody);
+expTick = (o => () => { if (S.gate && !S.gate.open) return; o(); })(expTick);
+pickHaul = (o => r => S.gate && !S.gate.open ? false : o(r))(pickHaul);
+wallSheet = (o => () => { o(); const g = gateOf(); q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row" style="display:block"><div class="rl"><span class="ico" style="--c:#8a6a40">🚪</span><div>The gate · ${segDir(g.seg)} side · ${g.open ? '<b style="color:var(--acc)">OPEN</b>' : '<b style="color:var(--amb)">SHUT</b>'}<small>Open: scavengers and robots can work outside, and anything else can walk in. Shut: safe, but nobody brings anything home and people get restless. A wall won't save you alone: the dead pile up and climb, so it needs guns and guards behind it.</small></div></div><div class="chips">${btn('Open', 'setGate(true)')}${btn('Shut', 'setGate(false)')}<button onclick="moveGate()">Move it clockwise</button></div></div>`); })(wallSheet);
+window.moveGate = () => { const g = gateOf(); g.seg = (g.seg + 2) % WALL_SEGS; wallSheet(); };
+
+// ---------- 6. houses are homes and workplaces ----------
+const USES = { bunks: ['🛏️', 'Bunkhouse', 'Beds only. New people come when they hear you have room'], shop: ['🔧', 'Workshop', 'Makes scrap and ammo, more with a skilled mechanic'], kitchen: ['🍳', 'Canteen', 'Makes food go further and lifts morale'], clinic: ['🩺', 'Clinic', 'The hurt recover faster. A medic makes medicine'], lookout: ['👁️', 'Lookout', 'Shoots what it sees and warns of raids'], store: ['📦', 'Warehouse', '+60 storage for everything'] };
+window.setUse = (k, u) => { const o = (S.occ || []).find(q => q.k === k); if (!o) return; o.use = u; const b = buildings.find(x => bKey(x) === k); toast(`${USES[u][0]} Now a ${USES[u][1].toLowerCase()}`); if (b) bldSheet(b); };
+bldSheet = (o => b => { o(b); const c = occOf(b); if (!c) return; const u = c.use || 'bunks', res = S.people.filter(q => q.home === c.k), w = c.worker && S.people.find(q => q.id === c.worker); q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row" style="display:block"><div>What this place is for<small>${USES[u][2]}${w ? ` · Run by ${fn(w)}` : ''} · ${res.length} live here</small></div><div class="chips">${Object.entries(USES).map(([k, U]) => `<button class="${u === k ? 'on' : ''}" onclick="setUse('${c.k}','${k}')">${U[0]} ${U[1]}</button>`).join('')}</div></div>`); })(bldSheet);
+assignHomes = (o => () => { o(); const occ = S.occ || []; if (!occ.length) return; const hq = S.people.filter(p => p.home === 'hq'), fill = {}; for (const q of S.people) if (q.home !== 'hq') fill[q.home] = (fill[q.home] || 0) + 1; for (const c of occ) { let room = c.bunks - (fill[c.k] || 0); for (const p of hq) { if (room <= 0 || hq.length < 4) break; if (p.home === 'hq' && p.id % 2 === 0) { p.home = c.k; room--; } } } })(assignHomes);
+function houseTick() {
+  const occ = S.occ || []; S.storeBonus = occ.filter(o => o.use === 'store').length * 60;
+  for (const c of occ) { const u = c.use || 'bunks'; if (u === 'bunks') continue; const key = { shop: 'tech', kitchen: 'cook', clinic: 'medic', lookout: 'shoot' }[u]; if (key) { let w = S.people.find(q => q.id === c.worker); if (!w || w.quar) { w = S.people.filter(q => !q.quar && !occ.some(o => o.worker === q.id)).sort((a, b) => skillOf(b, key) - skillOf(a, key))[0]; c.worker = w ? w.id : null; } if (!w) continue; const s = skillOf(w, key), m = .5 + s * .15;
+      if (u === 'shop') { S.res.scrap += .12 * m; if (S.t % 6 === 0 && S.res.scrap > 30) { S.res.scrap -= .5; S.res.ammo += .8 * m; } } if (u === 'kitchen') { S.res.food += S.surv * .002 * m; S.camp.mor = Math.min(100, S.camp.mor + .006 * m); } if (u === 'clinic') { for (const q of S.people) if (q.hp < 100 && (q.need || {}).rest >= 0) q.hp = Math.min(100, q.hp + .03 * m); if (S.t % 50 === 0 && S.res.food > 10) S.res.meds += .4 * m; } if (u === 'lookout' && S.res.ammo > 1 && S.t % 2 === 0) { const z = nearestZ(c, 50); if (z) { hit(z, 7 * m); S.res.ammo -= .3; fx.push({ k: 'shot', a: { x: c.x, y: c.y, h: 4 }, b: z, t: .1, c: '#ffe08a' }); sfx('pistol', c.x, c.y, .4); } } if (S.t % 40 === 0) train(w, key, .1); } }
+  // room to spare brings people in: this is what houses are for
+  const spare = survCap() - S.surv; if (spare > 2 && S.camp.mor > 35 && S.res.food > 15 && !isNight() && Math.random() < .00028 * Math.min(spare, 10) * (1 + occ.length * .3)) { S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { identity(p); p.bio ??= pick(BIOS); lifeOf(p); skillsOf(p); toast(`🚶 ${p.name}, a ${p.bio}, heard you had room. Good at ${SK[bestSkill(p)][1].toLowerCase()}.`); feed('🚶', `${fn(p)} arrived looking for a bed`); } }
+}
+drawOcc = (o => (c, P, k, now) => { o(c, P, k, now); for (const q of S.occ || []) if (q.use && q.use !== 'bunks') { const [x, y] = P(q.x, q.y); c.font = '14px system-ui'; c.textAlign = 'center'; c.fillText(USES[q.use][0], x, y - 4); }
+  const g = S.gate; if (g) { const a = (g.seg + .5) * SEG_A, R = wallRAt(a), [x, y] = P(Math.cos(a) * R, Math.sin(a) * R), u = Math.max(6, k * 3); c.fillStyle = g.open ? '#0d0f0c' : '#6a4a2a'; c.strokeStyle = g.open ? '#b5c94a' : '#d99a34'; c.lineWidth = 2; c.fillRect(x - u, y - u * .7, u * 2, u * 1.4); c.strokeRect(x - u, y - u * .7, u * 2, u * 1.4); c.font = `${u | 0}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🚪', x, y); } })(drawOcc);
+
+// ---------- 7. where does it all come from? tap any supply ----------
+const RESINFO = {
+  scrap: ['Everything is built from it.', () => [`Blocks you hold: +${(.35 * held() * 60).toFixed(0)}/min (${held()} blocks)`, `Survivors picking through junk: +${(S.surv * 3).toFixed(0)}/min`, 'Scavengers, drones and hauler robots bring it from shops and homes', 'Salvage yards and Workshop houses', 'Dead raiders drop it'], 'Claim blocks, build a salvage yard, or turn a house into a workshop.'],
+  food: ['People eat constantly. No food means they starve and leave.', () => [`Crop beds: ${homeOf('bed').length}`, `Farmers: ${S.camp.jobs.farm || 0}`, 'Farm-field outposts, chicken coops', 'Scavenging shops', 'Cooks and canteens make it go further'], 'Place crop beds with a scarecrow (More → Homestead).'],
+  water: ['People drink every minute.', () => [`Wells: ${S.towers.filter(t => t.type === 'well').length}`, `Water haulers: ${S.camp.jobs.water || 0}`, 'Rain barrels and catchers when it rains', 'Cistern outposts'], 'Build a well pump inside the wall.'],
+  meds: ['Treats the sick and the bitten.', () => ['Scavenging pharmacies and hospitals', 'Herbs in crop beds', 'Clinic houses', 'Standing order: crafts some when low', 'Traders and radio deals'], 'Find a pharmacy block and hold it.'],
+  fuel: ['Generators, flamers, drones and winter heat.', () => ['Scavenging gas stations and garages', 'Traders and radio deals'], 'Hold a block with a gas station.'],
+  ammo: ['Almost every gun uses it.', () => [`Armory press rule: ${S.rules && S.rules.ammo ? 'keeps ' + S.rules.ammo + ' in stock, from scrap' : 'off'}`, 'Scavenging, dead raiders', 'Workshop houses', 'Armory upgrade'], 'Keep scrap high: the press turns it into rounds.'],
+  elec: ['Robots, drones and advanced guns.', () => ['Scavenging electronics stores', 'Capturing strongholds', 'Traders'], 'Rare. Look for commercial buildings.'],
+};
+window.resInfo = k => { const [why, src, tip] = RESINFO[k], r = RATE[k] || 0; openSheet(`<h3>${RES[k]} ${RES_NAME[k]}</h3><p class="explain">${why}</p><div class="row"><div>Stored<small>Limit ${Math.round(resCap(k))}</small></div><b>${Math.round(S.res[k])}</b></div><div class="row"><div>Change right now</div><b style="color:${r >= 0 ? 'var(--acc)' : 'var(--red)'}">${r >= 0 ? '+' : ''}${r.toFixed(1)}/min</b></div><h4>Where it comes from</h4>${src().map(t => `<div class="memo">${t}</div>`).join('')}<p class="explain">💡 ${tip}</p>`); };
+document.querySelectorAll('#resrow .res').forEach(el => { const b = el.querySelector('b'); if (b && b.id && RESINFO[b.id.slice(2)]) { el.style.pointerEvents = 'auto'; el.style.cursor = 'pointer'; el.onclick = () => resInfo(b.id.slice(2)); } });
+window.guideSheet = () => openSheet(`<h3>📖 How the camp works</h3>${[['🔩 Supplies', 'Tap any supply at the top to see where it comes from.'], ['🧑‍💼 People run themselves', 'The Foreman assigns jobs by skill. People also do useful things on their own. Set standing orders under People → Rules.'], ['🧍 Why someone is unhappy', 'Tap them. Every feeling is listed with its cause.'], ['🏠 Houses', 'Claim a block, tap a building, occupy it. Choose what it\'s for. Free beds bring new people.'], ['🚪 Gate', 'Open lets scavengers out and the dead in. It runs on its own unless you change it.'], ['🧱 Wall', 'It only buys time. The dead pile up and climb. You need guns, crews and guards.'], ['🗺️ Land', 'Blocks produce what\'s on them. Anchor them with an outpost, gun or fortified building.'], ['🧬 Horde', 'It adapts to your main weapon. Mix them.'], ['👤 Crews', '4 free, 2 per guard. Uncrewed guns fire slowly.']].map(([a, b]) => `<div class="row"><div>${a}<small>${b}</small></div></div>`).join('')}`, guideSheet);
+
+// ---------- 8. inspect: skills and feelings ----------
+window.inspectP = (o => id => { o(id); const p = S.people.find(q => q.id === id), box = q$('#sheet .persona'); if (!p || !box) return; const ml = moodlets(p).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 7), sk = Object.entries(skillsOf(p)).sort((a, b) => b[1] - a[1]);
+  box.insertAdjacentHTML('afterend', `<div class="row" style="display:block"><b>Why they feel this way</b>${ml.map(([t, v]) => `<small style="color:${v > 0 ? 'var(--acc)' : 'var(--red)'}">${v > 0 ? '+' : ''}${v} ${t}</small>`).join('') || '<small>Nothing much either way.</small>'}</div><div class="row" style="display:block"><b>Skills</b> <small style="display:inline">· carrying ${GEAR[p.gear || 'fists'].n.toLowerCase()}</small><div class="skgrid">${sk.map(([k, v]) => `<div><span>${SK[k][0]} ${SK[k][1]}</span><i><b style="width:${v * 10}%"></b></i></div>`).join('')}</div></div>`); })(window.inspectP);
+
+// ---------- 9. talk that does something ----------
+function adviceOf(p) {
+  const k = bestSkill(p), low = lowRes(), C = S.camp, g = S.towers.filter(t => !TOWERS[t.type].home).sort((a, b) => a.hp / TOWERS[a.type].hp - b.hp / TOWERS[b.type].hp)[0], v = Math.min(...S.wall.segs), seg = S.wall.segs.indexOf(v);
+  if (k === 'medic') return C.sick ? `${C.sick} sick right now and ${Math.round(S.res.meds)} doses left. Hygiene's at ${Math.round(C.hyg)}. That's where it starts.` : `Nobody's sick, and hygiene's at ${Math.round(C.hyg)}. ${C.hyg < 50 ? 'That won\'t last. Put someone on sanitation.' : 'Keep it that way.'}`;
+  if (k === 'build' || k === 'tech') return v < segMax() * .7 ? `The ${segDir(seg)} wall is at ${Math.round(v / segMax() * 100)}%. I'd start there.` : g && g.hp < TOWERS[g.type].hp * .7 ? `That ${TOWERS[g.type].name.toLowerCase()} is at ${Math.round(g.hp / TOWERS[g.type].hp * 100)}%. It'll jam soon.` : 'Everything\'s holding. We should build before we need to.';
+  if (k === 'shoot' || k === 'melee') return S.unmanned ? `${S.unmanned} guns have nobody on them. You need more guards.` : S.adaptTo ? `They've gotten used to our ${S.adaptTo} guns. We need something different.` : `${(S.rivals || []).filter(R => R.rel <= -30 && !R.dead).length} gangs want us dead. Watch the ${pick(DIRS)} side.`;
+  if (k === 'farm' || k === 'cook') return `We've got ${Math.round(S.res.food)} food, ${(RATE.food || 0).toFixed(1)} a minute, and ${homeOf('bed').length} beds planted. ${homeOf('bed').length < S.surv / 2 ? 'I\'d plant more.' : 'That\'s not bad.'}`;
+  if (k === 'scav') return `We're short on ${RESW[low]}. ${pois.filter(p => p.type === low && p.loot > 0).length} places left that might have it.`;
+  return `People are ${S.camp.mor > 60 ? 'holding together' : 'close to the edge'}. ${S.people.filter(q => (q.mood ?? 60) < 35).map(fn)[0] || 'Nobody'} needs someone to talk to.`;
+}
+const TALKS = {
+  advice: ['💡', 'What should I be worried about?', p => { psyche(p); return adviceOf(p); }],
+  skills: ['🧰', 'What are you good at?', p => { const s = Object.entries(skillsOf(p)).sort((a, b) => b[1] - a[1]).slice(0, 2); return `${SK[s[0][0]][1]}, mostly. ${s[0][1] > 6 ? 'I was good at it before all this.' : 'I\'m getting there.'} Some ${SK[s[1][0]][1].toLowerCase()} too. ${JOBSK[p.role] === s[0][0] ? 'You\'ve got me in the right place.' : 'You could use me better.'}`; }],
+  thanks: ['🙏', 'Thank them for their work', p => { addTrust(p, 5); moodlet(p, 'You thanked me', 10, 200); return pick(['Nobody says that anymore. Thanks.', 'Just doing my part. …But thanks.', 'That actually helps.']); }],
+  joke: ['😏', 'Tell a joke', p => { const ok = Math.random() < .3 + psyche(p).humor * .7; addTrust(p, ok ? 3 : -2); moodlet(p, ok ? 'You made me laugh' : 'Your awful joke', ok ? 8 : -2, 150); return ok ? pick(['Ha! That is terrible. Do another.', 'I hate that I laughed.']) : pick(['Please stop.', 'Read the room.']); }],
+  person: ['👥', 'What do you think of someone?', p => { const q = pick(S.people.filter(x => x !== p)); if (!q) return 'There\'s nobody else here.'; const r = relOf(p, q); return r > 40 ? `${fn(q)}? I'd trust them with my life.` : r < -20 ? `${fn(q)} and I don't get along. I'll leave it there.` : `${fn(q)}'s all right. Good at ${SK[bestSkill(q)][1].toLowerCase()}, from what I've seen.`; }],
+  drill: ['🎯', 'Practice with them', p => { const k = skillOf(p, 'shoot') > skillOf(p, 'melee') ? 'shoot' : 'melee'; train(p, k, .5); addTrust(p, 3); S.res.ammo = Math.max(0, S.res.ammo - 3); return `Thanks. I needed that. I feel a little better about my ${SK[k][1].toLowerCase()}.`; }],
+  rest: ['😴', 'Take the rest of the day off', p => { p.need.rest = 100; moodlet(p, 'A day off', 12, 200); addTrust(p, 6); return 'Really? …I won\'t argue.'; }],
+  wish: ['🌟', 'Ask what they\'d like today', p => { lifeOf(p); return `Today? ${p.wish}. And long-term, I want to ${ASPIRE[p.asp].t.toLowerCase()}.`; }],
+};
+const talkFresh = p => Object.entries(TALKS).filter(([k]) => (p.talked ||= {})[k] !== dayNo());
+window.talkMore = k => { const p = DLG.p, T = TALKS[k]; (p.talked ||= {})[k] = dayNo(); DLG.say = T[2](p); DLG.done = false; renderTalk(); };
+window.talkJob = r => { const p = DLG.p, J = S.camp.jobs; if (JOBS[p.role]) J[p.role] = Math.max(0, J[p.role] - 1); p.role = r; J[r] = (J[r] || 0) + 1; p.jobSet = S.t; (S.orders ||= {}); DLG.say = voice(p, JOBSK[r] === bestSkill(p) ? 'Finally. That\'s what I\'m good at.' : pick(['Sure. If that\'s what you need.', 'You got it.'])); (p.talked ||= {}).job = dayNo(); renderTalk(); };
+renderTalk = (o => () => { o(); const p = DLG.p, box = q$('#dlg .dopts'); if (!box) return; const used = DLG.used ||= [];
+  box.querySelectorAll('button').forEach(b => { const m = (b.getAttribute('onclick') || '').match(/talkAct\('(\w+)'\)/); if (m && used.includes(m[1]) && m[1] !== 'away') b.remove(); });
+  const fresh = talkFresh(p); box.insertAdjacentHTML('afterend', `<div class="tmore">${fresh.map(([k, T]) => `<button onclick="talkMore('${k}')">${T[0]} ${T[1]}</button>`).join('')}${(p.talked || {}).job === dayNo() ? '' : `<div class="tjob"><small>Put them on:</small>${Object.entries(JOBS).filter(([k]) => k !== p.role).sort((a, b) => skillOf(p, JOBSK[b[0]]) - skillOf(p, JOBSK[a[0]])).slice(0, 3).map(([k, j]) => `<button onclick="talkJob('${k}')">${j.i} ${j.n}</button>`).join('')}</div>`}</div>`); })(renderTalk);
+window.talkAct = (o => a => { if (DLG) (DLG.used ||= []).push(a); o(a); })(window.talkAct);
+
+worldTick = (o => () => { o(); S.people.forEach(skillsOf); moodTick(); initiativeTick(); ordersTick(); gateTick(); houseTick(); })(worldTick);
 
 // ================= radio =================
 function radio(from, msg) {
