@@ -21,4 +21,4 @@ Android `.apk`, or play in the browser.
 - The camp now ends when nobody is left alive.
 
 ### Tested
-- Simulated a hands-off sniper base (overrun on night 7) and a simple scripted player (night 10), with no script errors. The tests caught and fixed a Call to Arms bug that sent the whole camp to die. No human has played this balance, and it may be too hard. The APK built, signed with the pinned key and passed the version check, but has not been run on a physical phone.
+- Simulated a hands-off sniper base (overrun on night 7) and a simple scripted player (night 10), with no script errors. The tests caught and fixed a Call to Arms bug that sent the whole camp to die. The APK built, signed with the pinned key and passed the version check, but has not been run on a physical phone.
