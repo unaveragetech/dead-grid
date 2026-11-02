@@ -396,9 +396,9 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "1.9.0";
+const APP_VERSION = "2.0.0";
 const SAVE = 'deadgrid.save.v2';
-const CELL = 125, GRID = 5, RADIUS = 760, DAY = 360;
+const CELL = 125, DAY = 360; let GRID = 5, RADIUS = 760;
 const $ = id => document.getElementById(id);
 
 // ================= definitions =================
@@ -951,7 +951,7 @@ function droneThink(d, dt) {
       const t = d.target, m = (1 + .25 * S.up.drone) * rnd(.7, 1.3);
       if (t.type === 'surv') d.cargo = { t: 'surv', n: Math.round(rnd(2, 5)) };
       else if (t.type === 'drop') d.cargo = { t: 'drop', n: 1 };
-      else { d.cargo = { t: t.type, n: Math.max(1, Math.round({ food: 6, water: 12, meds: 3, fuel: 5, scrap: 22, ammo: 14, elec: 2 }[t.type] * m * .6 * depOf(t.x, t.y))) }; deplete(t.x, t.y, .86); }
+      else { d.cargo = { t: t.type, n: Math.max(1, Math.round({ food: 6, water: 12, meds: 3, fuel: 5, scrap: 22, ammo: 14, elec: 2 }[t.type] * m * .6 * depOf(t.x, t.y))) }; deplete(t.x, t.y, .86); stripHouse(t.x, t.y); stripBp(t.x, t.y); }
       t.loot--; d.st = 'back';
     }
   } else if (d.st === 'back') {
@@ -1037,7 +1037,7 @@ function spawnZombie(mode, ax, ay, forceType) {
     if (src) {
       const c = cell(...src); c.p = Math.max(0, c.p - 1);
       x = src[0] * CELL + rnd(-CELL / 2, CELL / 2); y = src[1] * CELL + rnd(-CELL / 2, CELL / 2);
-    } else { const a = S.hordeDir != null ? S.hordeDir + rnd(-.4, .4) : rnd(0, 6.28), R0 = mode === 'surge' ? rnd(160, 230) : RADIUS; x = Math.cos(a) * R0; y = Math.sin(a) * R0; }
+    } else { const a = S.hordeDir != null ? S.hordeDir + rnd(-.4, .4) : rnd(0, 6.28), R0 = mode === 'surge' ? rnd(160, 230) : Math.min(RADIUS, 820); x = Math.cos(a) * R0; y = Math.sin(a) * R0; }
   }
   const t = forceType || zType(), d = ZTYPES[t], k = 1 + (S.wave - 1) * .1;
   zombies.push({ x, y, t, hp: d.hp * k, max: d.hp * k, spd: d.spd * rnd(.85, 1.15), cd: 0, wob: rnd(0, 6), v: Math.random() * ZOUT.length | 0, sc: rnd(.88, 1.12) });
@@ -1083,7 +1083,7 @@ function zombieThink(z, dt) {
     z.cd -= dt;
     if (z.cd <= 0) {
       z.cd = d.ranged ? 2 : 1;
-      if (tgt.hq) { S.hp -= d.dmg * (d.human ? .3 : 1); sfx('thud', 0, 0, .6); } else { tgt.hp -= d.dmg; if (tgt.p && !d.human) bite(tgt); }
+      if (tgt.hq) { S.hp -= d.dmg * (d.human ? .3 : 1); sfx('thud', 0, 0, .6); } else { tgt.hp -= d.dmg * (tgt.p ? 1 - armorOf(tgt.p) : 1); if (tgt.p && !d.human && Math.random() > armorOf(tgt.p) * 1.2) bite(tgt); }
       if (d.ranged) { fx.push({ k: 'shot', a: { x: z.x, y: z.y, h: 1.5 }, b: { x: tgt.x, y: tgt.y }, t: .3, c: d.human ? '#ffe08a' : '#9ad13a' }); if (d.human) { sfx('pistol', z.x, z.y, .7); noise(z.x, z.y, 60, .3); } }
     }
   }
@@ -1352,8 +1352,9 @@ function draw() {
     const d = ZTYPES[z.t], [x, y] = P(z.x, z.y); if (x < -10 || y < -10 || x > W + 10 || y > H + 10) continue;
     const r = Math.max(2.4, d.r / 3 * .55 * k * (z.sc || 1));
     drawZombieTop(ctx, x, y, r, z, nightZ);
-    if (z.hp < z.max) { ctx.fillStyle = '#0f0'; ctx.fillRect(x - r, y - r * 1.6, 2 * r * z.hp / z.max, 1.5); }
+    if (z.hp < z.max) { ctx.fillStyle = '#000'; ctx.fillRect(x - r - 1, y - r * 2 - 1, 2 * r + 2, 4); ctx.fillStyle = '#4f4'; ctx.fillRect(x - r, y - r * 2, 2 * r * z.hp / z.max, 2); }
   }
+  drawThreats(ctx, W, H, P);
   if (buildMode && ghost) {
     const [x, y] = P(ghost.x, ghost.y), gr = Math.max(9, 1.7 * k) + 1, gd = TOWERS[ghost.type];
     if (gd.range) { ctx.fillStyle = ghost.ok ? 'rgba(155,225,93,.12)' : 'rgba(255,77,61,.12)'; ctx.beginPath(); ctx.arc(x, y, gd.range * k, 0, 7); ctx.fill(); }
@@ -3064,10 +3065,12 @@ function moreSheet() {
     ${tile('🌍', 'The grid', 'worldSheet()', (S.wlog || []).length + ' events')}
     ${tile('🌱', 'Homestead', 'homesteadSheet()', homeOf('bed').length + ' beds')}
     ${tile('🎒', 'Stockpile', 'invSheet()', 'Inventory')}
-    ${tile('🔸', 'Armory', 'armorySheet()', 'Craft')}
+    ${tile('🛠️', 'Workbench', 'armorySheet()', Object.keys(S.bps || {}).length + ' blueprints')}
     ${tile('🤖', 'Robots', 'robotSheet()', S.robots.length + '/' + robotCap())}
     ${tile('📻', 'Radio', 'radioSheet()', (S.radioLog || []).length + ' msgs')}
     ${tile('⚑', 'Rivals', 'rivalSheet()', (S.rivals || []).filter(r => r.rel <= -30 && !r.dead).length + ' hostile')}
+    ${tile('📕', 'Infected', 'catalogSheet()', Object.keys(S.zseen || {}).length + ' logged')}
+    ${tile('🧭', 'Scavenged', 'scavSheet()', 'Map overlay')}
     ${tile('🏆', 'Goals', 'baseSheet()', OBJECTIVES[S.obj] ? OBJECTIVES[S.obj].t : 'All done')}
     ${tile('🎯', 'Center', "closeSheet();map.setView([S.lat,S.lon],17)", 'Map')}
     ${tile(AU.on ? '🔊' : '🔇', 'Sound', 'soundSheet()', AU.on ? 'Levels' : 'Muted')}
@@ -3190,7 +3193,7 @@ function robotThink(r, dt) {
         r.timer = (r.timer ?? (6 + 8 * (1 - depOf(t.x, t.y)))) - dt;
         if (r.timer <= 0) {
           const base = { food: 6, water: 12, meds: 3, fuel: 5, scrap: 22, ammo: 14, elec: 2 }[t.type] || 8, cap = { guard: 1.8, heavy: 1.4, rover: 3.5 }[r.type] || 2;
-          r.cargo = { t: t.type, n: Math.max(1, Math.round(base * cap * depOf(t.x, t.y))) }; t.loot--; deplete(t.x, t.y, .86); r.timer = null;
+          r.cargo = { t: t.type, n: Math.max(1, Math.round(base * cap * depOf(t.x, t.y))) }; t.loot--; deplete(t.x, t.y, .86); stripHouse(t.x, t.y); stripBp(t.x, t.y); r.timer = null;
         }
       }
     } else if (goTo(0, 0)) { give({ [r.cargo.t]: r.cargo.n }); fx.push({ k: 'txt', x: 0, y: 0, s: '+' + r.cargo.n + RES[r.cargo.t], t: 1.2 }); sfx('pickup', 0, 0, .5); r.cargo = null; r.task = 'idle'; }
@@ -3757,7 +3760,7 @@ function alertList() {
   const bit = S.people.filter(p => p.inf && !p.hid && !p.quar); if (bit.length) add(100, '🩸', `${bit[0].name.split(' ')[0]} is bitten`, "survTab('people')");
   const sus = S.people.filter(p => p.inf && p.hid && p.inf > 25); if (sus.length) add(68, '🤒', `${sus[0].name.split(' ')[0]} looks feverish`, "survTab('people')");
   const br = S.wall.segs.filter(h => h <= 0).length; if (br) add(95, '🧱', `${br} wall breach${br > 1 ? 'es' : ''}`, 'wallSheet()'); else if (wallPct() < .6) add(72, '🧱', `Wall at ${Math.round(wallPct() * 100)}%`, 'wallSheet()');
-  if (S.res.ammo < 60 && S.towers.some(t => TOWERS[t.type].ammo)) add(90, '🔸', 'Ammo low: press rounds', 'armorySheet()');
+  if (S.res.ammo < 60 && S.towers.some(t => TOWERS[t.type].ammo)) add(90, '🔸', 'Ammo low: press rounds', "benchTab='sup';armorySheet()");
   const mins = k => (RATE[k] || 0) < -.05 ? S.res[k] / -RATE[k] : 99;
   if (S.res.water < 10 || mins('water') < 4) add(86, '💧', 'Water running out', 'buildSheet()');
   if (S.res.food < 10 || mins('food') < 4) add(85, '🥫', 'Food running out', 'homesteadSheet()');
@@ -5337,7 +5340,7 @@ zombieThink = (o => (z, dt) => {
       if (l > reach) { z.wob += dt * 3; const s = z.spd * dt * (isNight() ? 1.15 : 1); z.x += (dx / l + Math.cos(z.wob) * .25) * s; z.y += (dy / l + Math.sin(z.wob) * .25) * s; z.ang = Math.atan2(dy, dx); }
       else if ((z.cd -= dt) <= 0) {
         z.cd = d.ranged ? 2 : 1;
-        if (bot) bot.hp -= d.dmg; else { const gs = z.raid != null && S.rivals[z.raid] && S.rivals[z.raid].style; p.hp -= d.dmg * (gs === 'burners' ? 1 : .5); if (d.human) { const pk = p.pile && Object.keys(p.pile).find(r => p.pile[r] >= 1); if (pk) { const n = Math.min(p.pile[pk], 8); p.pile[pk] -= n; z.loot = (z.loot || 0) + n; if (Math.random() < .2) fx.push({ k: 'txt', x: z.x, y: z.y, s: '-' + RES[pk], t: .8 }); } else { const k = pick(['food', 'scrap', 'ammo', 'meds']), n = Math.min(S.res[k], { food: 3, scrap: 8, ammo: 6, meds: .5 }[k]); S.res[k] -= n; z.loot = (z.loot || 0) + n; } } }
+        if (bot) bot.hp -= d.dmg; else { const gs = z.raid != null && S.rivals[z.raid] && S.rivals[z.raid].style; p.hp -= d.dmg * (gs === 'burners' ? 1 : .5) * (1 - armorOf(p)); if (d.human) { const pk = p.pile && Object.keys(p.pile).find(r => p.pile[r] >= 1); if (pk) { const n = Math.min(p.pile[pk], 8); p.pile[pk] -= n; z.loot = (z.loot || 0) + n; if (Math.random() < .2) fx.push({ k: 'txt', x: z.x, y: z.y, s: '-' + RES[pk], t: .8 }); } else { const k = pick(['food', 'scrap', 'ammo', 'meds']), n = Math.min(S.res[k], { food: 3, scrap: 8, ammo: 6, meds: .5 }[k]); S.res[k] -= n; z.loot = (z.loot || 0) + n; } } }
         if (d.ranged) fx.push({ k: 'shot', a: { x: z.x, y: z.y, h: 1.5 }, b: { x: tgt.x, y: tgt.y }, t: .3, c: d.human ? '#ffe08a' : '#9ad13a' });
         if (d.human) sfx('pistol', z.x, z.y, .5);
       }
@@ -5441,7 +5444,7 @@ function campTickR() {
     if (R.rel > -30) continue;
     // expand toward you
     R.grow = (R.grow ?? rnd(420, 640)) - 1;
-    if (R.grow <= 0 && R.camps.length < 4) {
+    if (R.grow <= 0 && R.camps.length < 4 && gangStage(R) >= 2) {
       R.grow = rnd(380, 560) - Math.min(160, S.wave * 10);
       const base = R.camps[0], tgt = plotList(null).sort((a, b) => dist(a, base) - dist(b, base))[0] || { x: 0, y: 0 };
       const f = rnd(.35, .6), cx = base.x + (tgt.x - base.x) * f + rnd(-60, 60), cy = base.y + (tgt.y - base.y) * f + rnd(-60, 60);
@@ -6152,7 +6155,7 @@ droneSheet = (o => () => { o(); const nights = S.wave - 1;
 droneThink = (o => (d, dt) => {
   d.role = (S.droneRoles || [])[drones.indexOf(d)] || 'scav';
   if (d.st === 'scav' && d.role === 'hauler' && d.timer <= dt && !d.dbl) d.dbl = true;
-  if (['gunship', 'medic', 'bomber'].includes(d.role) && ['idle', 'patrol'].includes(d.st)) return combatDrone(d, dt);
+  if (DCOMBAT.includes(d.role) && ['idle', 'patrol'].includes(d.st)) return combatDrone(d, dt);
   const had = d.cargo; o(d, d.role === 'scout' ? dt * 1.35 : d.role === 'hauler' ? dt * .75 : dt);
   if (d.cargo && !had && d.dbl && d.cargo.n) { d.cargo.n *= 2; } if (d.st === 'idle') d.dbl = false;
 })(droneThink);
@@ -6166,6 +6169,7 @@ function combatDrone(d, dt) {
   d.bat -= .8 * dt; d.cd = (d.cd || 0) - dt;
   if (d.bat < 18) { d.st = 'back'; return; }
   const fly = (tx, ty) => { const dx = tx - d.x, dy = ty - d.y, l = Math.hypot(dx, dy) || 1, s = 32 * dt; if (l > s) { d.x += dx / l * s; d.y += dy / l * s; d.ang = Math.atan2(dy, dx); } };
+  if (droneExtra(d, dt, fly)) return;
   if (d.role === 'gunship') {
     d.a += dt * .45; const R = wallR() + 25; fly(Math.cos(d.a) * R, Math.sin(d.a) * R);
     const z = nearestZ(d, 60); if (z && d.cd <= 0 && S.res.ammo > .1) { d.cd = .3; S.res.ammo -= .1; hit(z, 9 + 2 * S.up.drone); d.fired = performance.now(); fx.push({ k: 'shot', a: { x: d.x, y: d.y, h: 15 }, b: z, t: .09, c: '#ffb080' }); sfx('mg', d.x, d.y, .35); }
@@ -6492,7 +6496,7 @@ function newFolk(R) {
 }
 function gangInit(R) {
   if (R.folk) return; R.camps ||= [{ id: 0, x: R.x, y: R.y, hp: 300, max: 300, n: 'their compound', main: true }];
-  R.folk = []; const n = 5 + Math.round(R.str / 3); for (let i = 0; i < n; i++) R.folk.push(newFolk(R));
+  R.folk = []; const n = 3 + Math.round(R.str / 6); for (let i = 0; i < n; i++) R.folk.push(newFolk(R));
   R.stock = Math.min(R.stock ?? 40, 80); R.b = [{ t: 'tent', c: 0, a: 1 }, { t: 'tent', c: 0, a: 3 }, { t: 'pile', c: 0, a: 5 }]; R.econ = rnd(0, 5);
 }
 const fighters = R => R.folk.filter(f => f.role === 'fight' && !f.away);
@@ -6501,25 +6505,25 @@ function gangAI(R) {
   for (const f of R.folk) if (f.away && !zombies.some(z => z.who === f)) f.away = false; // a raid in progress isn't saved
   const here = R.folk.filter(f => !f.away), scav = here.filter(f => f.role === 'scav').length, tents = R.b.filter(b => b.t === 'tent').length, towers = R.b.filter(b => b.t === 'tower').length, farms = R.b.filter(b => b.t === 'farm').length, hostile = R.rel <= -30;
   // they're worse at this than you: little income, waste, no machines
-  R.stock += scav * (hostile ? .16 : .22) + farms * .2 + rnd(0, .2); R.stock -= R.folk.length * .07; R.stock = Math.min(R.stock, 90 + R.camps.length * 40); R.str = R.folk.length * 1.1 + towers * 2; const popCap = Math.min(30, 7 + dayNo() * .9 + R.camps.length), walls = R.b.filter(b => b.t === 'wall').length;
+  R.stock += scav * (hostile ? .12 : .2) + farms * .2 + rnd(0, .2); R.stock -= R.folk.length * .07; R.stock = Math.min(R.stock, 90 + R.camps.length * 40); R.str = R.folk.length * 1.1 + towers * 2; const popCap = Math.min(30, gangCap(R)), walls = R.b.filter(b => b.t === 'wall').length;
   if (R.stock <= 0) { R.stock = 0; if (R.folk.length > 2 && Math.random() < .18) { const f = pick(here); if (f) { R.folk.splice(R.folk.indexOf(f), 1); if (Math.random() < .3 && S.surv < survCap()) { S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { p.bio = 'ex-raider'; p.mood = 40; toast(`🏳️ ${p.name} deserted ${R.n} and begged at your gate. They were starving.`); feed('🏳️', `${fn(p)} deserted ${R.n}`); } } } } }
   const buy = (t, cost) => { if (R.stock < cost) return false; R.stock -= cost; R.b.push({ t, c: pick(R.camps).id, a: rnd(0, 6.28) }); return true; };
   // spending is impulsive: guns and bodies first, food last
   const roll = Math.random();
   if (here.length >= tents * 4 && tents < 3 + R.camps.length * 3 && buy('tent', 18)) {}
   else if (roll < .5 && R.stock > 30 && R.folk.length < Math.min(popCap, 8 + tents * 4)) { R.stock -= 26; R.folk.push(newFolk(R)); if (hostile && R.folk.length % 5 === 0) feed(R.i, `${R.n} now number ${R.folk.length}`); }
-  else if (roll < .7 && towers < 2 + R.camps.length * 2) buy('tower', 35);
-  else if (roll < .85 && walls < R.camps.length * 7) buy('wall', 20);
+  else if (roll < .7 && gangStage(R) >= 1 && towers < 2 + R.camps.length * 2) buy('tower', 35);
+  else if (roll < .85 && gangStage(R) >= 1 && walls < R.camps.length * (R.stage >= 2 ? 7 : 3)) buy('wall', 20);
   else if (farms < R.camps.length) buy('farm', 25);
   if (scav < 2 && here.length > 3) pick(here).role = 'scav';
-  if (R.folk.length >= 8 && R.stock > 70 && R.camps.length < 4 && hostile && S.wave >= 3) { R.stock -= 50; R.grow = 0; }
+  if (gangStage(R) >= 2 && R.stock > 70 && R.camps.length < 4 && hostile) { R.stock -= 50; R.grow = 0; }
   // attack: they always want to, and judge the odds badly
-  if (!hostile || S.wave < 2 || (S.peace && S.peace['r' + R.id] > S.wave)) return;
+  if (!hostile || S.wave < 3 || (S.peace && S.peace['r' + R.id] > S.wave)) return;
   R.war = (R.war ?? rnd(120, 240)) - 5 * (isNight() ? 1.6 : 1);
-  if (R.war <= 0 && fighters(R).length >= 3) { R.war = rnd(170, 340) - Math.min(90, R.folk.length * 4); launchRaid(R); }
+  if (R.war <= 0 && fighters(R).length >= 3) { R.war = rnd(280, 480) - Math.min(70, R.folk.length * 3); launchRaid(R); }
 }
 function launchRaid(R, hq) {
-  const fg = fighters(R), overcommit = Math.random() < .25, n = Math.min(2 + dayNo(), Math.max(2, Math.round(fg.length * (overcommit ? .95 : .6)))), team = fg.sort(() => Math.random() - .5).slice(0, n); if (!team.length) return;
+  const fg = fighters(R), overcommit = Math.random() < .25, n = Math.min(raidCap(R), Math.max(2, Math.round(fg.length * (overcommit ? .95 : .6)))), team = fg.sort(() => Math.random() - .5).slice(0, n); if (!team.length) return;
   const outs = plotList(null), def = q => S.robots.filter(r => r.postK === q.k).length * 3 + plotList('tower').filter(t => dist(t, q) < CELL * 1.5).length * 2 + (q.p.type === 'tower' ? 4 : 0);
   // poor scouting: a third of the time they hit whatever is nearest, guarded or not
   const q = hq || !outs.length || Math.random() < .25 ? null : (Math.random() < .33 ? outs.sort((a, b) => dist(a, R) - dist(b, R)) : outs.sort((a, b) => def(a) - def(b)))[0];
@@ -6624,8 +6628,8 @@ BUILD_CATS.find(c => c[0] === 'Barriers & lights')[1].push('clay', 'tar', 'flare
 Object.assign(TOWER_H, { gl: .6, mini: 1.7, clay: 0, tar: 0, flare: 2.4 });
 const GEAR = { fists: { n: 'Bare hands', d: 2, r: 3, cd: 1, a: 0 }, bat: { n: 'Spiked bat', i: '🏏', d: 6, r: 3.5, cd: .9, a: 0, c: { scrap: 8 } }, machete: { n: 'Machete', i: '🗡️', d: 10, r: 3.5, cd: .8, a: 0, c: { scrap: 15 } }, pistol: { n: 'Pistol', i: '🔫', d: 6, r: 26, cd: .7, a: .3, c: { scrap: 20 } }, shotgun: { n: 'Shotgun', i: '💢', d: 16, r: 14, cd: 1.4, a: .6, c: { scrap: 40 } }, rifle: { n: 'Hunting rifle', i: '🎯', d: 16, r: 45, cd: 1.6, a: .5, c: { scrap: 55 } }, smg: { n: 'SMG', i: '🔥', d: 5, r: 24, cd: .22, a: .15, c: { scrap: 70, elec: 1 } } };
 function gearTick() { S.arms ||= {}; const G = Object.keys(GEAR).filter(k => k !== 'fists').sort((a, b) => GEAR[b].d / GEAR[b].cd - GEAR[a].d / GEAR[a].cd); const free = { ...S.arms }; for (const p of S.people.slice().sort((a, b) => (b.role === 'guard') - (a.role === 'guard'))) { const k = G.find(g => free[g] > 0); p.gear = k || 'fists'; if (k) free[k]--; } }
-window.craftGear = k => { if (!pay(GEAR[k].c)) return; (S.arms ||= {})[k] = (S.arms[k] || 0) + 1; gearTick(); armorySheet(); };
-armorySheet = (o => () => { o(); q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Hand weapons</h4><small style="color:var(--dim)">Guards get the best first. Anyone in a fight uses what they carry.</small>${Object.entries(GEAR).filter(([k]) => k !== 'fists').map(([k, g]) => `<div class="row"><div>${g.i} ${g.n} × ${(S.arms || {})[k] || 0}<small>${g.r > 5 ? g.r + ' m range' : 'Hand to hand, no ammo'} · hits for ${g.d}</small></div>${btn(fmtCost(g.c), `craftGear('${k}')`, !canPay(g.c))}</div>`).join('')}</div>`); })(armorySheet);
+
+armorySheet = (o => () => { o(); const sh = q$('#sheet'), h = sh.querySelector('h3'); if (benchTab !== 'sup') { [...sh.children].forEach(e => { if (e !== h) e.remove(); }); sh.insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px">${kitSheetHtml()}</div>`); } h.insertAdjacentHTML('afterend', `<div class="chips">${tabBtn('bench', '🛠️ Workbench')}${tabBtn('cat', '📐 Blueprints')}${tabBtn('crew', '👥 Who has what')}${tabBtn('sup', '🔸 Supplies')}</div>`); })(armorySheet);
 
 // ---------- 3. new infected, night types, adaptation ----------
 Object.assign(ZTYPES, {
@@ -6656,7 +6660,7 @@ hit = (o => (z, d, s) => {
 drawZombieTop = (o => (c, x, y, s, z, night) => { o(c, x, y, s, z, night); const k = ZTYPES[z.t]; if (k.lob || k.armor || k.blast || k.scream || k.climb || z.t === 'crawler' || z.t === 'dog') { c.fillStyle = k.col; c.globalAlpha = .75; c.beginPath(); c.arc(x, y, s * (k.blast ? 1.35 : .8), 0, 7); c.fill(); c.globalAlpha = 1; if (k.scream) { c.strokeStyle = 'rgba(230,180,220,.6)'; c.beginPath(); c.arc(x, y, s * (1.5 + (performance.now() / 300 % 1.5)), 0, 7); c.stroke(); } } })(drawZombieTop);
 
 // ---------- 4. three-way combat, firefights, hand to hand ----------
-const hurtP = (p, n, by) => { p.hp -= n; if (p.hp <= 0 && S.people.includes(p)) killPerson(p, by); };
+const hurtP = (p, n, by) => { p.hp -= n * (1 - armorOf(p)); if (p.hp <= 0 && S.people.includes(p)) killPerson(p, by); };
 function fightFx(x, y, s) { if (Math.random() < .5) fx.push({ k: 'txt', x: x + rnd(-1, 1), y: y + rnd(-1, 1), s, t: .5 }); sfx('thud', x, y, .4); }
 function enemyOf(z, range) { let best = null, bd = range; const tk = (o, kind) => { const d = dist(z, o); if (d < bd) { bd = d; best = { o, kind, d }; } }; for (const q of zombies) if (!ZTYPES[q.t].human && !q.dead) tk(q, 'z'); for (const m of militia) tk(m, 'm'); for (const r of S.robots) if (!r.broken) tk(r, 'r'); for (const p of S.people) if (!p.out && !p.inside && p.wx != null) { const d = Math.hypot(p.wx - z.x, p.wy - z.y); if (d < bd) { bd = d; best = { o: p, kind: 'p', d }; } } return best; }
 function strike(z, e, n) { const o = e.o; if (e.kind === 'z') hit(o, n); else if (e.kind === 'm') o.hp -= n; else if (e.kind === 'r') o.hp -= n; else { hurtP(o, n, 'was killed by raiders'); if (S.t - (S.hurtMsg || -99) > 20) { S.hurtMsg = S.t; toast(`🩸 Raiders are on ${fn(o)}!`); alarm('raiders inside'); } } }
@@ -6923,6 +6927,432 @@ renderTalk = (o => () => { o(); const p = DLG.p, box = q$('#dlg .dopts'); if (!b
 window.talkAct = (o => a => { if (DLG) (DLG.used ||= []).push(a); o(a); })(window.talkAct);
 
 worldTick = (o => () => { o(); S.people.forEach(skillsOf); moodTick(); initiativeTick(); ordersTick(); gateTick(); houseTick(); })(worldTick);
+
+// ================= 2.0 polish: seeing the dead, moving guns, a map that grows, bands of strangers =================
+// ---------- the dead stand out from the map, and the catalog remembers them ----------
+const ZINFO = {
+  walker: ['Walker', 'Most of the neighbors. Slow, patient, and never alone.', 'Anything works. Watch your ammo.', 1],
+  runner: ['Runner', 'Recently turned. Still remembers how to sprint.', 'MGs and flamers before they reach the wall.', 1],
+  crawler: ['Crawler', 'Lost its legs, not its appetite. Low and quick.', 'Mines and flamers. Easy to miss in a crowd.', 3],
+  dog: ['Infected dog', 'Somebody\'s pet. Very fast and very fragile.', 'One MG burst. Don\'t let them reach scavengers.', 5],
+  spitter: ['Spitter', 'A swollen throat that throws acid over your barricades.', 'Snipers. Kill it before it gets in range.', 3],
+  brute: ['Brute', 'Big in life, bigger now. Tears through barricades.', 'Snipers and rockets. Focus it down.', 6],
+  riot: ['Riot dead', 'Old police, still in the armor. Bullets glance off.', 'Explosives and flame ignore most armor.', 8],
+  bloater: ['Bloater', 'Full of gas. It bursts when it dies.', 'Kill it far from your wall, never against it.', 8],
+  screamer: ['Screamer', 'It calls more of them. It does not stop.', 'Top priority for snipers.', 8],
+  stalker: ['Stalker', 'Climbs walls. Hunts people, not buildings.', 'Keep guards and MGs inside the wall.', 10],
+  lobber: ['Lobber', 'Throws burning filth from behind the crowd.', 'Mortars and long guns reach it.', 12],
+  tank: ['Tank', 'Something went badly wrong with this one.', 'Everything you have, and mines in its path.', 15],
+};
+function zSeen(t) { const s = S.zseen ||= {}; if (!s[t]) { s[t] = dayNo(); if (ZINFO[t] && (S.wave > 1 || t !== 'walker')) { toast(`📕 New in the catalog: ${ZINFO[t][0]}`); $('b-radio') && radio('Lookout', `Never seen one like that. Logging it: ${ZINFO[t][0].toLowerCase()}. ${ZINFO[t][2]}`); } } }
+spawnZombie = (o => (m, a, b, f) => { const n = zombies.length, r = o(m, a, b, f); if (zombies.length > n) zSeen(zombies[zombies.length - 1].t); return r; })(spawnZombie);
+const zRing = t => t === 'walker' ? '#ff5a4a' : t === 'runner' || t === 'dog' || t === 'crawler' ? '#ffa030' : t === 'tank' || t === 'brute' ? '#ff2060' : t === 'spitter' || t === 'bloater' || t === 'lobber' ? '#c8ff40' : '#e080ff';
+drawZombieTop = (o => (c, x, y, s, z, night) => {
+  if (ZTYPES[z.t].human) return o(c, x, y, s, z, night);
+  const S2 = Math.max(s, 3.4), col = zRing(z.t), big = z.t === 'tank' || z.t === 'brute';
+  c.fillStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.arc(x, y, S2 * 1.55, 0, 7); c.fill();
+  c.strokeStyle = col; c.lineWidth = big ? 2.4 : 1.6; c.globalAlpha = night ? .75 + .25 * Math.sin(performance.now() / 180 + z.v) : .95; c.beginPath(); c.arc(x, y, S2 * 1.55, 0, 7); c.stroke(); c.globalAlpha = 1;
+  o(c, x, y, S2, z, night);
+  if (z.mark > S.t) { c.strokeStyle = '#fff'; c.lineWidth = 1; c.strokeRect(x - S2 * 1.9, y - S2 * 1.9, S2 * 3.8, S2 * 3.8); }
+})(drawZombieTop);
+// the crowd you can't see yet: arrows at the screen edge
+function drawThreats(c, W, H, P) {
+  const secs = {}; for (const z of zombies) { if (z.flee || Math.hypot(z.x, z.y) > 420) continue; const [x, y] = P(z.x, z.y); if (x >= 0 && y >= 0 && x <= W && y <= H) continue; const a = Math.round(Math.atan2(y - H / 2, x - W / 2) / (Math.PI / 4)), q = secs[a] ||= { n: 0, h: 0, x: 0, y: 0 }; q.n++; q.x += x; q.y += y; if (z.t === 'bandit') q.h++; }
+  c.textAlign = 'center';
+  for (const a in secs) { const q = secs[a], an = Math.atan2(q.y / q.n - H / 2, q.x / q.n - W / 2), m = Math.min((W / 2 - 26) / Math.abs(Math.cos(an) || 1e-3), (H / 2 - 90) / Math.abs(Math.sin(an) || 1e-3)), x = W / 2 + Math.cos(an) * m, y = H / 2 + Math.sin(an) * m;
+    c.save(); c.translate(x, y); c.rotate(an); c.fillStyle = q.h ? '#ffc060' : '#ff4d3d'; c.strokeStyle = '#000'; c.lineWidth = 2; c.beginPath(); c.moveTo(14, 0); c.lineTo(-6, -10); c.lineTo(-2, 0); c.lineTo(-6, 10); c.closePath(); c.stroke(); c.fill(); c.restore();
+    c.font = 'bold 11px system-ui'; c.lineWidth = 3; c.strokeStyle = '#000'; c.fillStyle = '#fff'; c.strokeText(q.n, x - Math.cos(an) * 16, y - Math.sin(an) * 16 + 4); c.fillText(q.n, x - Math.cos(an) * 16, y - Math.sin(an) * 16 + 4); }
+}
+const ZPIC = {};
+function zPortrait(t) {
+  if (ZPIC[t]) return ZPIC[t]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const c = cv.getContext('2d'), s = Math.min(27, 19 + ZTYPES[t].r);
+  c.fillStyle = '#20241c'; c.fillRect(0, 0, 96, 96); try { drawZombieTop(c, 48, 48, s, { t, v: t.length * 3, ang: -Math.PI / 2, wob: 1, x: 0, y: 0, hp: 1, max: 1 }, true); } catch (e) {}
+  return ZPIC[t] = cv.toDataURL();
+}
+window.catalogSheet = () => {
+  const seen = S.zseen ||= {}, K = S.zk ||= {}, st = (S.t, Object.keys(ZINFO)), got = st.filter(t => seen[t]).length, T = t => ZTYPES[t];
+  const lvl = (v, a) => '▮'.repeat(Math.max(1, Math.min(5, Math.ceil(v / a))));
+  openSheet(`<h3>📕 Infected catalog</h3><small style="color:var(--dim)">${got} of ${st.length} recorded. Ring color on the map: red common, orange fast, green ranged or gas, pink big, purple special.</small>
+    ${st.map(t => { const I = ZINFO[t]; return seen[t] ? `<div class="row zcat"><img src="${zPortrait(t)}" width="64" height="64" style="border-radius:8px;border:2px solid ${zRing(t)};flex:none" alt=""><div style="flex:1"><b>${I[0]}</b><small>${I[1]}</small><small style="font-family:monospace">Health ${lvl(T(t).hp, 40)} Speed ${lvl(T(t).spd, 1.5)} Bite ${lvl(T(t).dmg, 8)}</small><small style="color:var(--acc)">${I[2]}</small><small>First seen day ${seen[t]} · ${K[t] || 0} killed</small></div></div>` : `<div class="row zcat"><div style="width:64px;height:64px;border-radius:8px;background:#111;display:grid;place-items:center;font-size:26px;flex:none">❔</div><div><b>Unknown</b><small>Not seen yet. Rumored after about night ${I[3]}.</small></div></div>`; }).join('')}`, null);
+};
+hit = (o => (z, d, s) => { const was = z.dead; o(z, z.mark > S.t ? d * 1.3 : d, s); if (z.dead && !was) { (S.zk ||= {})[z.t] = ((S.zk || {})[z.t] || 0) + 1; for (const q of drones) if (q.role === 'salvage' && q.st === 'patrol' && dist(q, z) < 80) { S.res.scrap += 1 + S.up.drone * .3; break; } } })(hit);
+
+// ---------- what has been picked over, shown on the land itself ----------
+let BSM = { t: -99, l: [] };
+drawRivals = (o => (c, P, k, now) => {
+  if (!S.f.noScav) {
+    const dep = S.dep || {}; c.font = 'bold 11px system-ui'; c.textAlign = 'center'; const W = c.canvas.width, H = c.canvas.height;
+    for (const n in dep) { const v = dep[n]; if (v >= .97) continue; const [i, j] = n.split(',').map(Number), [x, y] = P(i * CELL - CELL / 2, j * CELL + CELL / 2), s = CELL * k; if (x > W || y > H || x + s < 0 || y + s < 0) continue;
+      const strip = v < .3; c.fillStyle = strip ? 'rgba(25,20,15,.42)' : `rgba(200,140,50,${.06 + (1 - v) * .2})`; c.fillRect(x, y, s, s);
+      c.save(); c.beginPath(); c.rect(x, y, s, s); c.clip(); c.strokeStyle = strip ? 'rgba(255,120,60,.32)' : 'rgba(255,200,110,.2)'; c.lineWidth = 1; c.beginPath(); const g = strip ? 14 : 28; for (let q = -s; q < s; q += g) { c.moveTo(x + q, y); c.lineTo(x + q + s, y + s); } c.stroke(); c.restore();
+      c.strokeStyle = strip ? 'rgba(255,110,60,.55)' : 'rgba(255,200,110,.4)'; c.strokeRect(x + .5, y + .5, s - 1, s - 1);
+      if (s > 70 && (i || j)) { const l = strip ? 'STRIPPED' : `${Math.round(v * 100)}% LEFT`; c.lineWidth = 3; c.strokeStyle = '#000b'; c.fillStyle = strip ? '#ff9a70' : '#ffd890'; c.strokeText(l, x + s / 2, y + s / 2 + 4); c.fillText(l, x + s / 2, y + s / 2 + 4); } }
+    if (map.getZoom() >= 17 && S.bs) { if (S.t - BSM.t > 4) { BSM = { t: S.t, l: buildings.filter(b => S.bs[bKey(b)]).map(b => ({ x: b.x, y: b.y, l: S.bs[bKey(b)].l })) }; } c.font = '11px system-ui'; for (const b of BSM.l) { const [x, y] = P(b.x, b.y); c.fillText(b.l < .15 ? '✖️' : '✔️', x, y); } }
+  }
+  o(c, P, k, now);
+})(drawRivals);
+window.scavSheet = () => { const cs = Object.keys(S.cells), dep = S.dep || {}, tot = cs.reduce((a, n) => a + (dep[n] ?? 1), 0) / cs.length, strip = cs.filter(n => (dep[n] ?? 1) < .3).length, part = cs.filter(n => (dep[n] ?? 1) >= .3 && (dep[n] ?? 1) < .97).length;
+  openSheet(`<h3>🗺️ Scavenged land</h3><div class="row" style="display:block"><b>${Math.round(tot * 100)}% of the known map still has something in it</b>${meter(tot * 100, '#e0b050')}<small>${part} blocks picked over · ${strip} stripped · map ${GRID * 2 + 1}×${GRID * 2 + 1} blocks</small></div>
+    <div class="row"><div>Amber hatching<small>Scavengers have been through. The label shows what's left.</small></div></div><div class="row"><div>Dark hatching, red edge<small>Stripped. Drones won't find much here.</small></div></div>
+    <div class="row"><div>✔️ and ✖️ on buildings<small>Up close: searched, and picked clean.</small></div></div>
+    <div class="row"><div>Show on the map</div>${btn(S.f.noScav ? 'Off' : 'On', 'S.f.noScav=!S.f.noScav;scavSheet()')}</div>`, null); };
+
+// ---------- guns can be picked up and moved ----------
+let MOVE = null;
+const moveCost = t => ({ scrap: Math.max(2, Math.ceil((TOWERS[t.type].cost.scrap || 10) * .15)) });
+setBuild = (o => k => { if (!k) MOVE = null; o(k); })(setBuild); window.setBuild = setBuild;
+towerSheet = (o => t => { o(t); const i = S.towers.indexOf(t), h = q$('#sheet'); if (i < 0 || !h || t.type === 'pipe') return;
+  h.querySelector('h3').insertAdjacentHTML('afterend', `<div class="row"><div>📍 Move it<small>Crew tears it down and rebuilds it${TOWERS[t.type].rate ? '. Offline until they finish' : ''}. Keeps its level and kills.</small></div>${btn(fmtCost(moveCost(t)), `moveTower(${i})`, !canPay(moveCost(t)))}</div>`); })(towerSheet);
+window.moveTower = i => { const t = S.towers[i]; if (!t) return; closeSheet(); setBuild(t.type); MOVE = t; showGhostBar(); toast(`📍 Tap where the ${TOWERS[t.type].name} should go`); };
+placeCheck = (o => (ty, p) => { if (!MOVE) return o(ty, p); const i = S.towers.indexOf(MOVE); if (i < 0) { MOVE = null; return o(ty, p); } S.towers.splice(i, 1); const g = o(ty, p); S.towers.splice(i, 0, MOVE); if (g.why && g.why.startsWith('Not enough')) { g.why = ''; g.ok = true; } if (g.ok && !canPay(moveCost(MOVE))) { g.ok = false; g.why = 'Not enough scrap to move it'; } return g; })(placeCheck);
+showGhostBar = (o => () => { o(); if (MOVE) { const e = q$('#mode em'); if (e) e.textContent = 'Move · ' + fmtCost(moveCost(MOVE)); } })(showGhostBar);
+window.placeGhost = (o => () => { if (!MOVE) return o(); const g = ghost, t = MOVE; if (!g || !g.ok || !pay(moveCost(t))) return; fx.push({ k: 'ring', x: t.x, y: t.y, r: 14, t: .7 }); t.x = g.x; t.y = g.y; t.rot = g.rot; if (TOWERS[t.type].rate) t.bp = Math.min(t.bp ?? 1, .55); noise(g.x, g.y, 50, 2); sfx('build', g.x, g.y); fx.push({ k: 'ring', x: g.x, y: g.y, r: 30, t: 1 }); toast(TOWERS[t.type].rate ? `🔨 Moved. Crew is setting the ${TOWERS[t.type].name} back up` : `📍 ${TOWERS[t.type].name} moved`); setBuild(null); })(window.placeGhost);
+
+// ---------- the map grows as you last ----------
+const MAP_AT = [5, 10, 16, 23, 31, 40];
+loadWorld = (o => async () => { const L = (S && S.mapLv) || 0; GRID = 5 + L; RADIUS = 760 + 125 * L; await o(); if (S.cells) for (let i = -GRID; i <= GRID; i++) for (let j = -GRID; j <= GRID; j++) S.cells[key(i, j)] ||= { c: false, i: 15, p: 0, max: 0 }; })(loadWorld);
+let growing = false;
+async function growMap() {
+  if (growing || (S.mapLv || 0) >= MAP_AT.length) return; growing = true;
+  const G0 = GRID, R0 = RADIUS, oldR = roads, oldT = trees, oldG = greens;
+  try {
+    S.mapLv = (S.mapLv || 0) + 1; for (let i = -G0 - 1; i <= G0 + 1; i++) for (let j = -G0 - 1; j <= G0 + 1; j++) S.cells[key(i, j)] ||= { c: false, i: 10 + Math.random() * 20, p: 0, max: 0, fresh: 1 }; GRID = 5 + S.mapLv; RADIUS = 760 + 125 * S.mapLv;
+    const els = S.offline ? null : await withT(osmApi(S.lat, S.lon), 30000);
+    let fresh = [];
+    if (els && els.length) { const seen = new Set(buildings.map(b => b.id).filter(Boolean)); if (hqB && hqB.id) seen.add(hqB.id); fresh = buildGeometry(els).filter(b => !seen.has(b.id) && Math.hypot(b.x, b.y) > R0 - 60); if (!roads.length) { roads = oldR; trees = oldT; greens = oldG; } }
+    else { const e = R0 + 60; roads = oldR.concat([[[-e, -e], [e, -e]], [[e, -e], [e, e]], [[e, e], [-e, e]], [[-e, e], [-e, -e]], [[0, e], [0, R0 - 60]], [[0, -e], [0, -R0 + 60]], [[e, 0], [R0 - 60, 0]], [[-e, 0], [-R0 + 60, 0]]].map(pts => ({ pts, w: 7, cls: 'residential' }))); }
+    const near = roadIndex(), all = buildings.concat(fresh, hqB ? [hqB] : []), n0 = all.length; fillHomes(all, near); fresh = fresh.concat(all.slice(n0)); layoutLots(fresh, near);
+    fresh.forEach(b => b.pop *= (S.pph || 2.5) / 2.5); buildings = buildings.concat(fresh).sort((a, b) => b.y - a.y);
+    const pop = {}; for (const b of fresh) { const [i, j] = cellOf(b.x, b.y); if (inGrid(i, j)) pop[key(i, j)] = (pop[key(i, j)] || 0) + b.pop; }
+    for (let i = -GRID; i <= GRID; i++) for (let j = -GRID; j <= GRID; j++) { const c = S.cells[key(i, j)]; if (c && c.fresh) { c.p = c.max = Math.round(pop[key(i, j)] || 0); delete c.fresh; } }
+    fresh.filter(b => b.pop > 0).sort(() => Math.random() - .5).slice(0, 14).forEach((b, k) => pois.push({ id: `g${S.mapLv}_${k}`, x: b.x, y: b.y, type: pick(['food', 'scrap', 'water', 'meds', 'fuel', 'ammo', 'elec']), name: 'House', loot: 3 }));
+    buildRoadGraph(); const b = RADIUS + 200; map.setMaxBounds(L.latLngBounds(toLL(-b, -b), toLL(b, b)));
+    world('🗺️', `The scouts pushed the map out to ${GRID * 2 + 1}×${GRID * 2 + 1} blocks. ${fresh.length} more buildings nobody has picked over, and whatever lives in them.`, false);
+    radio('Scouts', pick(['We got past the old roadblock. There\'s a lot more out here than we thought. A lot more of everything.', 'New streets on the map. Plenty to scavenge. Nobody\'s cleared it, so go careful.', 'Marked another ring of blocks. Somebody\'s been through a few of them already. Not all of them dead.']));
+    fx.push({ k: 'ring', x: 0, y: 0, r: 120, t: 1 }); save();
+  } catch (e) { console.error(e); roads = oldR; trees = oldT; greens = oldG; GRID = G0; RADIUS = R0; S.mapLv--; }
+  growing = false;
+}
+function mapTick() { const L = S.mapLv || 0; if (!isNight() && L < MAP_AT.length && S.wave - 1 >= MAP_AT[L]) growMap(); }
+
+// ---------- gangs start as a few desperate people and have to earn a fortress ----------
+const G_KIND = {
+  desperate: ['Desperate', 'Hungry people with guns. They would rather eat than fight, and they might take food over blood', 1.5, 1],
+  thieves: ['Thieves', 'They come for your stores and run when it goes badly', 1.1, .8],
+  zealots: ['Zealots', 'They think the dead are a judgment. They do not negotiate and do not run', .9, 1.1],
+  deserters: ['Deserters', 'Former soldiers. Few, drilled, and better armed than they should be', 1.2, .9],
+  feral: ['Feral', 'They stopped being a community a while ago. Unpredictable', .8, 1.2],
+};
+const gangKind = R => R.kind ||= pick(Object.keys(G_KIND));
+const heldN = () => Object.values(S.cells || {}).filter(c => c.c).length;
+const gangCap = R => Math.round(4 + (S.wave - 1) * .45 + S.people.length * .35 + heldN() * .25);
+const raidCap = R => Math.round(2 + (S.wave - 1) * .35 + S.people.length * .12);
+function gangStage(R) { const n = (R.folk || []).length, ni = S.wave - 1, st = n >= 13 && ni >= 16 ? 2 : n >= 7 && ni >= 6 ? 1 : 0; if (st > (R.stage || 0)) { R.stage = st; if (R.rel <= -30 || st === 2) world(R.i, st === 2 ? `${R.n} isn't a gang anymore. It's a settlement with walls, and people who were born to it soon.` : `${R.n} stopped drifting and dug in. They have a real camp now.`); } return R.stage || 0; }
+const STAGE_N = ['Drifting band', 'Settled camp', 'Established hold'];
+rivalSheet = (o => () => { o(); const list = (S.rivals || []).filter(R => !R.dead && R.folk); q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Who they are</h4>${list.map(R => { const K = G_KIND[gangKind(R)], c = { food: 12 + R.folk.length * 2 }; return `<div class="row"><div>${R.i} ${R.n}<small>${STAGE_N[gangStage(R)]} · ${R.folk.length} people${R.rel <= -30 ? ` · ${K[0]}: ${K[1]}` : ''}</small></div>${R.rel <= -30 && R.kind === 'desperate' ? btn('Send food ' + fmtCost(c), `feedGang(${R.id})`, !canPay(c)) : ''}</div>`; }).join('')}</div>`); })(rivalSheet);
+window.feedGang = id => { const R = S.rivals[id], c = { food: 12 + R.folk.length * 2 }; if (!pay(c)) return; R.rel += 30; R.stock += 30; (S.peace ||= {})['r' + id] = S.wave + 3; world(R.i, R.rel > -30 ? `${R.boss} sent back one word about the food: "Why?" ${R.n} has stopped raiding.` : `${R.n} took your food and held back. For three nights, at least.`); rivalSheet(); };
+launchRaid = (o => (R, hq) => { const K = G_KIND[gangKind(R)]; o(R, hq); R.war = (R.war || 200) * K[2]; })(launchRaid);
+
+// ---------- strangers on the road: every band is someone, and some of them come back ----------
+const BAND = {
+  family: { n: ['the {s} family', 'three households from {w}', 'a church group from {w}', 'some folks from {w}'], i: '🧳', col: '#9ab0c0', a: 'They have children with them. {b} does the talking, and keeps one hand on a kid\'s shoulder.', g: { food: 10, water: 8 }, ask: 'food and a night\'s rest' },
+  trader: { n: ['a pushcart trader', '{s}\'s wagon', 'the {w} peddlers'], i: '🛒', col: '#e0b050', a: '{b} has a loaded cart and a shotgun laid across it, and is in a good mood about both.', g: { scrap: 18 }, ask: 'a fair trade', trade: 1 },
+  deserter: { n: ['men from the {w} checkpoint', 'what\'s left of a Guard squad', 'a fire team out of {w}'], i: '🎖️', col: '#7a8a50', a: 'They still march in step. {b} won\'t quite meet your eye, or say who gave the last order.', g: { food: 12 }, ask: 'food, and no questions' },
+  thief: { n: ['a friendly bunch from {w}', 'some travelers', 'the {s} cousins'], i: '🎭', col: '#b08a9a', a: '{b} is very polite and smiles a lot. One of them keeps counting your guards.', g: { food: 8 }, ask: 'food and a look around', liar: 1 },
+  pilgrim: { n: ['the walkers of {w}', 'a procession from {w}', 'the {s} congregation'], i: '🕯️', col: '#c0a0e0', a: '{b} walks at the front, singing quietly. They all have the same mark on their foreheads.', g: { water: 8 }, ask: 'water, and a hearing' },
+  medic: { n: ['a doctor from {w}', 'two nurses and a van', 'the {w} clinic staff'], i: '🩺', col: '#6cc7ff', a: '{b} looks exhausted, and is carrying the last of a hospital in a duffel bag.', g: { food: 6, water: 6 }, ask: 'a safe place to sleep', gift: { meds: 8 } },
+  mech: { n: ['a tow truck crew', '{s}\'s garage', 'linemen from {w}'], i: '🔧', col: '#e0a83a', a: '{b} is covered in grease and looks at your generator the way other people look at food.', g: { food: 8 }, ask: 'food in exchange for work', gift: { scrap: 30, elec: 3 } },
+};
+const BAND_W = ['the lake road', 'the river', 'the mill town', 'up north', 'the interstate', 'the valley', 'the county line', 'the old base', 'the reservoir', 'over the ridge'];
+function bandTick() {
+  S.bands ||= []; const now = S.t, dt = Math.min(5, now - (S.bandT ?? now)); S.bandT = now;
+  if (now > (S.bandNext ??= now + rnd(300, 500)) && S.bands.length < 3) { S.bandNext = now + rnd(420, 800); const k = pick(Object.keys(BAND)), B = BAND[k], a = rnd(0, 6.28), r = RADIUS * .96, sn = pick(G_SUR), cnt = 3 + Math.floor(Math.random() * 5);
+    const R0 = { rel: 0, col: B.col, camps: [] }, folk = []; for (let q = 0; q < cnt; q++) folk.push(newFolk(R0));
+    S.bands.push({ id: S.t | 0, k, n: pick(B.n).replace('{s}', sn).replace('{w}', pick(BAND_W)), boss: folk[0].name, x: Math.cos(a) * r, y: Math.sin(a) * r, tx: rnd(-160, 160), ty: rnd(-160, 160), folk, st: 'come' }); feed(B.i, 'Lookouts spotted travelers at the edge of the map'); }
+  for (const b of S.bands) { const dx = b.tx - b.x, dy = b.ty - b.y, l = Math.hypot(dx, dy) || 1, s = 3.2 * dt; if (l > s) { b.x += dx / l * s; b.y += dy / l * s; b.ang = Math.atan2(dy, dx); }
+    if (b.st === 'come' && Math.hypot(b.x, b.y) < wallR() + 90 && !isNight() && !DLG && !$('sheet').classList.contains('open')) bandMeet(b);
+    else if (b.st === 'come' && l < 12) { const a = rnd(0, 6.28); b.tx = Math.cos(a) * 200; b.ty = Math.sin(a) * 200; }
+    else if (b.st === 'go' && l <= s) bandEnd(b); else if (b.st === 'met' && now - (b.metT ??= now) > 150) { b.how = 'away'; const an = rnd(0, 6.28); b.tx = Math.cos(an) * RADIUS * .8; b.ty = Math.sin(an) * RADIUS * .8; b.st = 'go'; } }
+  S.bands = S.bands.filter(b => !b.gone);
+  for (const g of (S.grudge ||= []).filter(g => g.at < now && !g.done)) { g.done = true; if (g.bad) { const a = rnd(0, 6.28); spawnBandits(Math.cos(a) * 190, Math.sin(a) * 190, 2 + Math.round((S.wave - 1) * .25), g.n); world('🔫', `${g.n} came back. They remember what you did.`, true); } else { give(g.gift); world('🎁', `${g.n} came back through and left ${fmtCost(g.gift)} at the gate. "You fed us when you didn't have to."`); } }
+}
+function bandEnd(b) { b.gone = true; const live = (S.rivals || []).filter(R => !R.dead).length; if (live >= 6 || Math.random() > (b.how === 'robbed' ? .75 : .45)) return;
+  const friendly = b.how === 'fed' || b.how === 'joined', G = genGang(), K = BAND[b.k], R = { id: S.rivals.length, ...G, x: b.x, y: b.y, str: b.folk.length, stock: 30, cd: rnd(500, 900), rel: friendly ? rnd(30, 50) : b.how === 'robbed' ? -55 : rnd(-40, 5), boss: b.boss, born: dayNo() };
+  if (friendly || R.rel > -30) { R.n = b.n.replace(/^(a|an|the|some|what's left of a|men from the|two nurses and a|three households from) /i, '').replace(/^\w/, m => m.toUpperCase()) + ' camp'; R.i = K.i; R.col = K.col; }
+  S.rivals.push(R); gangInit(R); R.folk = b.folk.slice(); R.folk.forEach(f => f.camp = 0); feed(R.i, `${b.n} settled nearby`); world(R.i, `${b.boss} and the others stopped walking and put up tents. ${friendly ? 'They wave when your scavengers pass.' : R.rel <= -30 ? 'They watch your scavengers pass.' : 'Nobody is sure what they want yet.'}`); }
+function bandMeet(b) { const K = BAND[b.k]; b.st = 'met'; const line = K.a.replace('{b}', b.boss.split(' ')[0]);
+  const rec = (b.k === 'trader' || K.trade) ? `${btn('Trade 20🔩 for 10🥫', `bandDo(${b.id},'trade')`, S.res.scrap < 20)}` : '';
+  openSheet(`<h3>${K.i} Strangers at the wall</h3><div class="row" style="display:block"><b>${b.n[0].toUpperCase() + b.n.slice(1)}, ${b.folk.length} people</b><small>${line} They ask for ${K.ask}.</small><div class="facestrip">${b.folk.slice(0, 8).map(f => `<img title="${f.name}" src="${face(f)}">`).join('')}</div></div>
+    <div class="row"><div>Help them<small>Give ${fmtCost(K.g)}. People remember this.</small></div>${btn('Give', `bandDo(${b.id},'feed')`, !canPay(K.g))}</div>
+    <div class="row"><div>Invite someone in<small>${b.boss.split(' ')[1] ? 'One of them stays with you.' : ''} You won't know them until you know them.</small></div>${btn('Invite', `bandDo(${b.id},'join')`, S.surv >= survCap())}</div>
+    ${rec ? `<div class="row"><div>Trade</div>${rec}</div>` : ''}
+    <div class="row"><div>Send them on<small>Nothing given, nothing owed.</small></div>${btn('Refuse', `bandDo(${b.id},'away')`)}</div>
+    <div class="row"><div>Rob them<small>Take what they carry. They will not forget.</small></div>${btn('Rob', `bandDo(${b.id},'rob')`)}</div>`, null); }
+window.bandDo = (id, a) => { const b = S.bands.find(q => q.id === id); if (!b) return closeSheet(); const K = BAND[b.k], who = b.boss.split(' ')[0], go = () => { const an = Math.atan2(b.y, b.x) + rnd(-.8, .8), r = RADIUS * rnd(.55, .9); b.tx = Math.cos(an) * r; b.ty = Math.sin(an) * r; b.st = 'go'; closeSheet(); }; const G = S.grudge ||= [];
+  const camp = (m, v) => S.people.forEach(p => { psyche(p).warm > .5 === v > 0 ? moodlet(p, m, Math.abs(v), 300) : moodlet(p, m, -Math.abs(v) * .6, 300); });
+  if (a === 'feed') { if (!pay(K.g)) return; b.how = 'fed'; camp('We helped strangers', 5); if (K.liar) { const q = Math.ceil(S.res.scrap * .08); S.res.scrap -= q; world('🎭', `${who} thanked you warmly. Later the count came up ${q} scrap short.`); } else { G.push({ at: S.t + rnd(500, 1100), n: b.n, gift: K.gift || { [pick(['scrap', 'ammo', 'meds'])]: 6 + S.wave } }); world(K.i, K.gift ? `${who} left something on the way out: ${fmtCost(K.gift)}.` : `${who} shook your hand and said they'd remember.`); if (K.gift) give(K.gift); } }
+  else if (a === 'join') { const f = b.folk.pop(); b.how = 'joined'; S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { if (f && f.name) p.name = f.name; p.mood = 60; if (K.liar && Math.random() < .6) { p.inf = 1; p.hid = true; } remember(p, `You took me in off the road when ${who === p.name.split(' ')[0] ? 'nobody else would' : who + ' moved on'}`); world(K.i, `${fn(p)} stayed behind when ${b.n} moved on.`); } }
+  else if (a === 'trade') { if (!pay({ scrap: 20 })) return; give({ food: 10 }); b.how = 'fed'; toast('🛒 Deal done.'); (S.bandNext -= 120); }
+  else if (a === 'rob') { b.how = 'robbed'; give({ food: 6 + b.folk.length * 2, scrap: 12 + b.folk.length * 3, ammo: b.k === 'deserter' ? 20 : 4 }); camp('We robbed people on the road', -7); G.push({ at: S.t + rnd(600, 1400), n: b.n, bad: true }); world('🔫', `You took everything ${b.n} carried. ${who} looked at you for a long time, then left.`); }
+  else { b.how = 'away'; toast('They move on.'); }
+  go(); };
+function drawBands(c, P, k) { const zoom = map.getZoom(); for (const b of S.bands || []) { const [x, y] = P(b.x, b.y); b.folk.slice(0, zoom >= 16 ? 8 : 3).forEach((f, q) => { const a = q * 2.4, r = q ? 2.5 + q * 1.4 : 0; drawPersonTop(c, x + Math.cos(a) * r * k, y + Math.sin(a) * r * k, Math.max(3, .6 * k), f.look, b.ang || 0, false); }); c.font = 'bold 11px system-ui'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = '#000'; c.fillStyle = BAND[b.k].col; const t = BAND[b.k].i + ' ' + b.n; c.strokeText(t, x, y - 12 - k); c.fillText(t, x, y - 12 - k); } }
+drawRivals = (o => (c, P, k, now) => { o(c, P, k, now); drawBands(c, P, k); })(drawRivals);
+
+// ---------- more guns ----------
+Object.assign(GEAR, {
+  revolver: { n: 'Old revolver', i: '🤠', d: 11, r: 22, cd: 1.1, a: .4, c: { scrap: 26 } },
+  crossbow: { n: 'Crossbow', i: '🏹', d: 15, r: 32, cd: 2, a: 0, c: { scrap: 34 } },
+  nailgun: { n: 'Nail gun rig', i: '📌', d: 4, r: 12, cd: .35, a: .05, c: { scrap: 24, elec: 1 } },
+  sawnoff: { n: 'Sawn-off', i: '🧨', d: 22, r: 8, cd: 1.7, a: .7, c: { scrap: 32 } },
+  carbine: { n: 'M4 carbine', i: '🪖', d: 8, r: 38, cd: .4, a: .22, c: { scrap: 85, elec: 1 } },
+  marksman: { n: 'Marksman rifle', i: '🔭', d: 30, r: 65, cd: 2.2, a: .9, c: { scrap: 110 } },
+  lmg: { n: 'Light machine gun', i: '🎖️', d: 7, r: 34, cd: .15, a: .22, c: { scrap: 130, elec: 2 } },
+});
+Object.assign(TOWERS, {
+  scatter: { name: 'Scatter Gun', icon: '💥', look: 'mg', night: 2, cost: { scrap: 55 }, range: 26, dmg: 18, rate: 1.1, ammo: .35, splash: 9, hp: 110, col: '#e8b070', desc: 'Short range, hits a whole cone of them' },
+  nailer: { name: 'Nail Thrower', icon: '📌', look: 'mg', night: 1, cost: { scrap: 35, elec: 1 }, range: 34, dmg: 4, rate: .28, power: 1, hp: 70, col: '#a0b0c0', desc: 'No ammo, just power. Weak but endless' },
+  harpoon: { name: 'Ballista', icon: '🏹', look: 'sniper', night: 6, cost: { scrap: 80 }, range: 95, dmg: 42, rate: 3, hp: 80, col: '#b08a50', desc: 'Silent and ammo free. Slow to reload' },
+  cannon: { name: 'Autocannon', icon: '🛞', look: 'rocket', night: 11, cost: { scrap: 150, elec: 6 }, range: 90, dmg: 24, rate: .7, ammo: .5, splash: 7, hp: 150, col: '#c0a080', desc: 'Punches through armor. Eats ammo' },
+  amr: { name: 'Anti-Materiel Rifle', icon: '🎯', look: 'sniper', night: 14, cost: { scrap: 170, ammo: 12 }, range: 175, dmg: 150, rate: 4.5, ammo: 1.6, hp: 70, col: '#8090d0', desc: 'For brutes and tanks. One shot, one hole' },
+});
+BUILD_CATS.find(c => c[0] === 'Defenses')[1].push('nailer', 'scatter', 'harpoon', 'cannon', 'amr');
+Object.assign(TOWER_H, { scatter: 1.4, nailer: 1.2, harpoon: 3, cannon: 1.7, amr: 3.4 });
+
+// ---------- more drones ----------
+Object.assign(DROLES, {
+  salvage: { n: 'Salvager', i: '🧲', col: '#c0c0d0', night: 2, d: 'Picks scrap off the dead near it' },
+  decoy: { n: 'Decoy', i: '📢', col: '#ffd060', night: 3, d: 'Plays noise and leads crowds away from the wall' },
+  spotter: { n: 'Spotter', i: '🔦', col: '#ffffff', night: 5, d: 'Marks targets: +30% damage from everything' },
+  shock: { n: 'Shocker', i: '⚡', col: '#b48cff', night: 9, d: 'Stuns the crowd to half speed. Uses batteries' },
+  firebug: { n: 'Firebug', i: '🔥', col: '#ff8a3d', night: 10, d: 'Drops fire on the front line. Uses fuel' },
+});
+const DCOMBAT = ['gunship', 'medic', 'bomber', 'salvage', 'decoy', 'spotter', 'shock', 'firebug'];
+function droneExtra(d, dt, fly) {
+  if (!['salvage', 'decoy', 'spotter', 'shock', 'firebug'].includes(d.role)) return false;
+  const near = zombies.filter(z => !z.flee && !ZTYPES[z.t].human && Math.hypot(z.x, z.y) < 320); if (!near.length) { d.st = 'back'; return true; }
+  const front = near.reduce((a, z) => Math.hypot(z.x, z.y) < Math.hypot(a.x, a.y) ? z : a, near[0]);
+  if (d.role === 'salvage') { d.a += dt * .3; fly(front.x * .9 + Math.cos(d.a) * 25, front.y * .9 + Math.sin(d.a) * 25); }
+  else if (d.role === 'decoy') { const a = Math.atan2(front.y, front.x), R = wallR() + 95; d.a = (d.a ?? a) + dt * .25; fly(Math.cos(d.a) * R, Math.sin(d.a) * R); if (d.cd <= 0) { d.cd = 1.5; sfx('radio', d.x, d.y, .3); fx.push({ k: 'ring', x: d.x, y: d.y, r: 45, t: .6 }); for (const z of near) if (dist(z, d) < 75 && z.t !== 'tank') z.lure = { x: d.x, y: d.y, u: S.t + 3 }; } }
+  else if (d.role === 'spotter') { fly(front.x, front.y); if (d.cd <= 0) { d.cd = 1; for (const z of near) if (dist(z, d) < 42) z.mark = S.t + 3; } }
+  else if (d.role === 'shock') { fly(front.x, front.y); if (d.cd <= 0 && S.res.elec > .15 && dist(d, front) < 22) { d.cd = 2; S.res.elec -= .15; for (const z of near) if (dist(z, d) < 28) { z.slow = S.t + 3; fx.push({ k: 'shot', a: { x: d.x, y: d.y, h: 12 }, b: z, t: .12, c: '#c8a0ff' }); } sfx('tesla', d.x, d.y, .3); } }
+  else { fly(front.x, front.y); if (d.cd <= 0 && S.res.fuel > .4 && dist(d, front) < 10) { d.cd = 2.4; S.res.fuel -= .4; shells.push({ x: d.x, y: d.y, t: .5, dmg: 26 + 4 * S.up.drone, r: 15, src: null }); d.fired = performance.now(); } }
+  return true;
+}
+zombieThink = (o => (z, dt) => { if (z.slow > S.t) dt *= .5; if (z.lure && z.lure.u > S.t && !z.who) { const dx = z.lure.x - z.x, dy = z.lure.y - z.y, l = Math.hypot(dx, dy) || 1; if (l > 6) { z.x += dx / l * z.spd * dt; z.y += dy / l * z.spd * dt; z.ang = Math.atan2(dy, dx); z.wob += dt * 3; } return; } o(z, dt); })(zombieThink);
+
+worldTick = (o => () => { o(); mapTick(); bandTick(); })(worldTick);
+
+// ================= conversations: a grammar that doesn't repeat, and stories that come back =================
+const GR = {
+  // what was before
+  thing: ["the good scissors", "my reading glasses", "a coffee maker that worked", "my mother's recipe box", "the dog's leash", "a whole box of birthday candles", "my library card", "a jar of pickles I was saving", "the spare key to a house that's gone", "my bowling shoes", "a sweater I hated", "a phone full of photos", "my nephew's drawing", "a parking ticket I never paid", "a guitar with three strings", "good socks", "the remote", "my sister's casserole dish", "a tackle box", "a calendar with everything crossed off", "my good pen", "the umbrella from the bank", "a fridge magnet from Niagara Falls", "half a crossword", "a voicemail I never deleted"],
+  place0: ["the laundromat", "the bus stop on Fourth", "the diner", "the high school gym", "the hardware store", "the DMV", "my cousin's garage", "the county fair", "the drive-in", "the pharmacy line", "the bowling alley", "the lake", "the break room", "the church basement", "the VFW hall", "the tire place", "the food court", "my old porch", "the car wash", "the ice rink"],
+  person0: ["my landlord", "my sister", "the mailman", "my old boss", "the kid next door", "my ex", "my brother-in-law", "the lady at the bakery", "my third grade teacher", "my dentist", "the guy from the tire place", "my grandmother", "my best friend from school", "our crossing guard", "my night-shift partner", "the neighbor with the leaf blower", "my AA sponsor", "my barber", "my daughter's soccer coach", "my dad"],
+  habit: ["complained about the weather", "argued over parking", "worried about my credit score", "kept receipts", "waited in line for no reason", "owned a lawn", "set an alarm", "pretended to like my coworkers", "checked the mail", "cared what shoes I wore", "paid for a gym", "apologized to furniture", "saved things for a special occasion", "read the terms and conditions", "got annoyed at slow internet", "planned a vacation for a year", "ironed things", "cut coupons", "had opinions about mayonnaise", "watched the news to relax"],
+  // what now
+  sound: ["the fence ticking when it cools", "someone coughing two rooms over", "the generator hiccuping", "boots on gravel", "wind in the wire", "the radio hissing when nobody's on it", "a door that nobody admits to opening", "crows", "that one loose panel", "dripping", "someone humming in their sleep", "the dead, far off, like a stadium", "the kettle", "rain on tarp", "a dog that might not be a dog"],
+  smell: ["smoke", "wet canvas", "gun oil", "burned hair", "boiled potatoes", "bleach", "old rain", "diesel", "the pit", "somebody's last bar of soap"],
+  small: ["a good spoon", "dry socks", "ten minutes of sun", "a joke that lands", "somebody saving you the heel of the bread", "hot water", "a door that latches", "a working flashlight", "a clean bandage", "a night nobody screams", "coffee, even that coffee", "someone saying your name right", "shoes that fit", "a chair with a back"],
+  fearn: ["running out of {low}", "the night the wall doesn't hold", "getting bit and not telling anyone", "being the last one", "forgetting what {person0} sounded like", "what we'll do when it gets cold", "somebody here deciding I'm not worth feeding", "how used to this I'm getting", "the quiet ones out there", "dying somewhere nobody finds me"],
+  verdict: ["I don't know what that says about me", "funny what sticks", "and I'd give a finger for it now", "and nobody warned me", "and that was a normal Tuesday", "I'd laugh if I had the energy", "it's stupid, I know", "don't tell anyone", "and I think about it more than I think about people", "that's the whole story, there's no point to it", "you'd have liked it", "or maybe that was somebody else, it's getting hard to keep straight"],
+  opener: ["You know what I keep thinking about?", "Funny thing.", "This is going to sound dumb.", "Got a second?", "So.", "I figured something out last night.", "Don't laugh.", "Day {day}, and", "Between you and me,", "I was on the wall earlier and", "Here's one for you.", "Nobody asked, but", "I'll tell you what I miss.", "You ever notice", "All right, honest question.", "Night {night} and I'm still", "I told {o} this already and they just stared.", "Quick thing.", "Can I say something that doesn't matter?"],
+  closer: ["Anyway.", "Forget it.", "That's all I've got.", "You can go now, I'm done being weird.", "Back to it, I guess.", "Don't look at me like that.", "Well. There it is.", "Sorry. Long shift.", "Tell me I'm wrong.", "", "", "", ""],
+  nowis: ["We've got {n} people and {wall}% of a wall.", "The wall's at {wall}%, for the record.", "We're short on {low} again.", "It's {noise} out there.", "{o} says it's getting better. {o} says a lot of things.", "{f} saved me a seat at dinner, so that's something.", "{e} and I aren't speaking, which is restful."],
+  m_miss: ["I miss {thing}. Not the people, God help me, {thing}. {verdict}.", "I used to see {person0} at {place0} every week and we never once had a real conversation. {verdict}.", "There was a day I {habit}. Whole days of that. {verdict}.", "I dreamed I was at {place0} looking for {thing}, and {person0} kept telling me it was in the car. {verdict}.", "If I could go back for one thing it wouldn't be anything smart. It'd be {thing}.", "{person0} once told me at {place0} that I worry too much. {verdict}."],
+  m_now: ["What gets me is {sound}. I can't stop hearing {sound}. {verdict}.", "I'd trade a week of rations for {small}. Okay, three days. {verdict}.", "Everything smells like {smell} now. Yesterday I caught {smell} on {thing} I'd kept wrapped up. {verdict}.", "The best thing that happened to me this week was {small}. That's the bar now.", "You stop noticing {smell}. Then you stop noticing {sound}. That's the part that scares me.", "{nowis} But I got {small} today, so I'm calling it a win."],
+  m_fear: ["What I'm actually afraid of is {fearn}. Not the teeth. {verdict}.", "I lie there and it's {sound}, and then it's {fearn}, and then it's morning.", "People think it's the dead that keep me up. It's {fearn}.", "{person0} used to say you can get used to anything. I'm starting to think that's {fearn} wearing a nicer coat."],
+  m_wit: ["I've decided to open {place0} again when this is over. We'd only serve {smell}. Great reviews.", "If {person0} walked through that gate I'd ask for my {thing} back before I said hello.", "Somewhere out there, there's one of them still wearing a name tag. I think about that. I hope it's {person0}.", "You know who'd be thriving right now? {person0}. Never paid for anything in their life.", "Add it to the list of things I never thought I'd say: I would fight {o} for {small}.", "I {habit}. Me. I actually did that, and on purpose."],
+  m_ask: ["Do you remember the last normal thing you did? Mine was {thing}, at {place0}. Yours?", "If we make it, what do we even tell people about all this? 'I {habit}, and then...'?", "Be honest, do you ever think about {fearn}?", "Who do you think has it better, us or {person0}, wherever they ended up?", "When you make the calls around here, do you think about {person0}-types? Regular people who {habit}?"],
+  // their reaction when the writer's list runs out
+  r_good: ["I'll remember you said that.", "{opener} that helped more than you'd think.", "Okay. That's {small}, that is.", "You know, {person0} never would have said that to me.", "Huh. All right then.", "Yeah. I can work with that.", "Don't tell {o} I got soft on you.", "I'm putting that one away for a bad night.", "Well. That's more than I was expecting on day {day}."],
+  r_bad: ["Right. I'll just go back to listening to {sound}.", "You sound like {person0}. That's not a compliment.", "Sure. Got it. Good talk.", "I'll remember you said that, too.", "Noted. I've got {smell} to get back to.", "And there it is.", "Okay. I won't bring it up again.", "{o} said you'd say that."],
+  r_mid: ["Hm.", "Maybe. Ask me after the next night.", "I hear you. Not sure I'm with you.", "Could be. I've been wrong about {thing}.", "We'll see, won't we.", "That's one way to look at it.", "If you say so.", "I'll think about it on the wall."],
+};
+Object.entries({
+  thing: ["a snow globe from Buffalo", "my kid's retainer", "the good flashlight", "a Costco card", "a stack of unpaid bills", "my wedding shoes", "a thermos with a dent in it", "the blue mug", "a box of Christmas lights", "a cookbook with notes in the margins", "my dad's watch", "a lawn chair", "a raffle ticket", "my bus pass", "a roll of stamps", "a key to the office", "the crossword from that Sunday", "my insulin cooler", "a shoebox of photos", "a hockey puck signed by nobody famous"],
+  place0: ["the Wegmans parking lot", "the waiting room at the dentist", "the rec center pool", "the post office", "the corner bar", "my kid's school pickup line", "the auto parts place", "the farmers market", "the bank drive-through", "the town pool", "the movie theater with the sticky floor", "the nursing home on Pine", "the Little League field", "the gas station with the good sandwiches", "the thrift shop"],
+  person0: ["the kid who bagged my groceries", "my physical therapist", "my mother-in-law", "the guy who always waved", "my college roommate", "our pastor", "my bowling partner", "the vet", "my probation officer", "my brother", "the woman at the DMV", "my first boss", "my son", "my husband", "my wife", "my best man", "the night nurse", "my cousin Denny"],
+  habit: ["alphabetized my spices", "stood in front of an open fridge", "took a nap on purpose", "paid someone to wash my car", "read reviews before buying a toaster", "threw out leftovers", "took the long way home", "said 'let's get lunch sometime'", "had a favorite pen", "got mad about a sports team", "took vitamins", "drove somewhere just to think", "sent back a meal", "had a five-year plan", "kept a junk drawer", "bought bottled water"],
+  sound: ["somebody sharpening something", "the rain gutter ticking", "a car alarm dying way off", "a baby, which can't be right", "the flag rope on the pole", "footsteps on the roof that turn out to be birds", "someone praying in the dark", "the pump", "shovels", "somebody laughing too long"],
+  smell: ["lamp oil", "wet dog", "hot wire", "antiseptic", "rotting leaves", "cooking fat", "pine", "something sweet that you don't want to think about"],
+  small: ["an unbroken egg", "a pair of real scissors", "a hot meal eaten sitting down", "a blanket that's only yours", "the sound of someone snoring safely", "a song you forgot you knew", "a straight answer", "a real pillow", "a day with no funeral", "somebody remembering how you take your coffee"],
+  fearn: ["someone opening the gate at night because they saw a face they knew", "how good {o} has gotten at this", "the first winter", "losing my teeth", "that this is the good part", "nobody remembering any of us", "the kids who won't remember before", "the day I stop writing things down", "that I'd do it again"],
+  verdict: ["and I'd do it all again", "and that's the last time I was happy, I checked", "go ahead, laugh", "I told {f} and they cried", "which tells you where my head's at", "and I never even liked it", "that's it, that's the secret", "and somehow it's the thing I'd save", "I don't expect that to make sense"],
+  opener: ["I'll say this for the end of the world:", "My grandmother had a saying, and I forgot it, but", "You'll like this.", "I've been meaning to tell you.", "I was boiling water and it hit me.", "Look.", "{f} dared me to tell you this.", "While I've got you.", "It's been a long one, so", "You look like you could use a distraction."],
+  nowis: ["There's {n} of us and I know everyone's snore now.", "{f}'s got a cough I don't love.", "Somebody's been stealing the good spoon. I have suspects.", "{low} is what everyone's whispering about.", "{o} has started talking to the crows."],
+  m_camp: ["{o} snores like {sound}. I've made peace with it.", "{f} told me about {person0} last night. I told them about {thing}. That's friendship now.", "I caught {o} crying over {thing}. I pretended to look for a wrench.", "{e} took the last of {small} and I've been planning my revenge for three days.", "If {o} tells that story about {place0} one more time I'm going over the wall.", "{f} and I have a bet on who {habit} the most, before. I'm winning. It's not a good thing to win.", "We had a whole argument about whether {place0} had good coffee. Twenty minutes. Best twenty minutes this week.", "{o} is teaching me cards. I owe them {small} and most of my future."],
+  m_dream: ["I dreamed {person0} was alive and just really annoyed about {thing}.", "Last night in my dream {place0} was still open and everyone there was very calm about it. I woke up angry.", "I had the dream where I'm at {place0} and can't find {thing}, except this time {d} was helping.", "I keep dreaming about {sound}. I wake up and it's actually {sound}.", "In the dream I {habit}. I woke up smiling. Then I woke up."],
+  m_work: ["Being a {bio} didn't prepare me for this. Except the part about {person0}. That did.", "You know what a {bio} is good for now? {small}, if I'm lucky.", "I told someone I was a {bio} and they laughed for a full minute. So that's where we are.", "Everything I know about {smell} I learned as a {bio}. You'd be surprised.", "A {bio} and {person0} walk into {place0}. That's the whole joke. It's not funny anymore."],
+  m_hope: ["When this is over I'm going back to {place0}, and I'm going to order something expensive, and I'm not going to finish it.", "I think we're going to make it. Don't quote me. I think so because of {small}.", "Someday somebody's going to find {thing} and wonder who it belonged to. I like that.", "{f} said we should plant trees. Trees. Like there's a later. I went and found a shovel.", "I'm starting to remember what it's like to look forward to {small}."],
+  r_good: ["That's going in the book of nice things. It's a short book.", "Nobody's said that to me since {person0}.", "You keep this up and I might start liking you.", "I needed that. Don't make it weird.", "Okay. You've earned {small}, if I ever find one."],
+  r_bad: ["I've had warmer talks with {person0}.", "Wow. Okay. {low} isn't the only thing we're short on.", "I'll let you get back to being in charge.", "Good to know where I stand.", "I'm going to go stare at the wall. It's better company."],
+  r_mid: ["I've heard worse from {person0}.", "That's a lot of words for day {day}.", "Could go either way. Most things do.", "Mm. Tell that to {e}.", "I'm too tired to have a position on that."],
+}).forEach(([k, a]) => (GR[k] ||= []).push(...a));
+function gram(t, c, depth = 0) { return t.replace(/\{(\w+)\}/g, (m, k) => { if (GR[k] && depth < 5) return gram(pick(GR[k]), c, depth + 1); return c[k] != null ? c[k] : (k === 'd' ? 'the ones we lost' : k); }); }
+const cap1 = t => t.replace(/^(\s*\W*)(\w)/, (m, a, b) => a + b.toUpperCase()).replace(/\s+/g, ' ').trim();
+function strHash(t) { let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 ^ t.charCodeAt(i)) >>> 0; return h; }
+// a person never says the same sentence twice in one save: every line is checked against what has been said
+let SAID = null;
+function saidSet() { if (!SAID || SAID.s !== S) SAID = { s: S, h: new Set(S.said ||= []) }; return SAID.h; }
+function markSaid(t) { const h = strHash(t), H = saidSet(); if (H.has(h)) return false; H.add(h); S.said.push(h); if (S.said.length > 6000) { H.delete(S.said.shift()); } return true; }
+function fresh(p, keys) { const c = vctx(p); let t = ''; for (let n = 0; n < 14; n++) { const pre = Math.random() < .55 ? pick(GR.opener) + ' ' : ''; t = cap1(gram(pre + `{${pick(keys)}}` + (Math.random() < .4 ? ' {closer}' : ''), c)); if (markSaid(t)) break; } return voice(p, t); }
+const OPEN_MAP = { small: ['m_miss', 'm_now', 'm_wit', 'm_ask', 'm_camp', 'm_work', 'm_dream'], vent: ['m_fear', 'm_now', 'm_dream'], joke: ['m_wit', 'm_camp'], question: ['m_ask', 'm_hope'], memory: ['m_miss', 'm_work', 'm_hope'] };
+openLine = (o => (p, k) => { if (OPEN_MAP[k] && Math.random() < .7) return fresh(p, OPEN_MAP[k]); const t = o(p, k); markSaid(t); return t; })(openLine);
+react = (o => (p, k, a) => { const r = o(p, k, a); if (r && r.say && !markSaid(r.say)) { const c = vctx(p), key = r.trust > 0 ? 'r_good' : r.trust < 0 ? 'r_bad' : 'r_mid'; for (let n = 0; n < 8; n++) { const t = cap1(gram(`{${key}}`, c)); if (markSaid(t)) { r.say = voice(p, t); break; } } } return r; })(react);
+
+// ---------- what a choice does, now or later ----------
+const ttl = () => S.title || 'boss';
+function apply(p, F) { if (!F) return; if (F.t) addTrust(p, F.t); if (F.m) p.mood = Math.max(0, Math.min(100, (p.mood ?? 60) + F.m)); if (F.pay) pay(F.pay); if (F.res) give(F.res); if (F.mem) remember(p, F.mem); if (F.ml) moodlet(p, F.ml[0], F.ml[1], F.ml[2] || 400); if (F.camp) S.people.forEach(q => q !== p && moodlet(q, F.camp[0], F.camp[1], F.camp[2] || 400)); if (F.later) (S.later ||= []).push({ at: S.t + F.later[0], k: F.later[1], id: p.id }); if (F.cb) (S.later ||= []).push({ at: S.t + F.cb[0], tree: F.cb[1], id: p.id }); if (F.train) train(p, F.train, .6); if (F.flag) (p.fl ||= {})[F.flag] = dayNo(); if (F.do) F.do(p); }
+const LATER = {
+  debtPaid: p => { const a = { meds: 3 + (p.mood > 50 ? 3 : 0) }; give(a); world('💊', `${fn(p)} paid back the medicine, and then some: ${fmtCost(a)}.`); },
+  debtSkip: p => { pay({ scrap: Math.min(S.res.scrap, 12) }); moodlet(p, 'I owe more than I can pay', -8, 600); world('🕳️', `${fn(p)}'s "friend" never existed. 12 scrap and the medicine are gone, and ${fn(p)} can't look at you.`); },
+  sleepCaught: p => { S.people.forEach(q => q !== p && moodlet(q, `${fn(p)} slept on watch and got away with it`, -5, 500)); world('👀', `Word got out that you covered for ${fn(p)} on watch. Not everyone's happy.`); },
+  dogBark: p => { if (isNight() || S.wave > 1) { world('🐕', `${fn(p)}'s dog started barking an hour before the dead showed up. People are feeding it scraps now.`); S.people.forEach(q => moodlet(q, 'That dog', 5, 800)); } },
+  dogBite: p => { p.hp = Math.max(1, (p.hp ?? 100) - 15); world('🐕', `${fn(p)}'s dog turned on them last night. Something got into it. They had to deal with it themselves.`); moodlet(p, 'I had to put my dog down', -20, 1000); },
+  betWin: p => { addTrust(p, 4); give({ food: 4 }); toast(`🎲 ${fn(p)} paid up on your bet, grinning. +4 🥫`); },
+  seeds: p => { give({ food: 18 }); world('🌱', `${fn(p)}'s seeds came up. Nobody's seen tomatoes in months. +18 🥫`); S.people.forEach(q => moodlet(q, 'A real tomato', 8, 700)); },
+  cacheGood: p => { give({ ammo: 25, scrap: 40, meds: 4 }); world('📦', `${fn(p)}'s hidden cache was real. 25 ammo, 40 scrap, 4 medicine.`); },
+  cacheBad: p => { p.hp = Math.max(1, (p.hp ?? 100) - 30); pay({ food: Math.min(S.res.food, 8) }); world('🪤', `${fn(p)}'s cache was picked over, and whoever got there first left a trap. They limped home.`); moodlet(p, 'I led us into that', -10, 800); },
+  cousin: p => { const R = (S.rivals || []).find(R => !R.dead && R.rel <= -30); if (R) { R.rel += 12; R.war = (R.war || 200) + 300; world(R.i, `${fn(p)}'s cousin in ${R.n} talked them out of the next raid. For now.`); } },
+  cousinBad: p => { const a = rnd(0, 6.28); spawnBandits(Math.cos(a) * 190, Math.sin(a) * 190, 2 + (S.wave >> 2), 'Raiders'); world('🔫', `${fn(p)}'s cousin sold what they knew. Raiders at the wire, and they know our shifts.`, true); },
+  lieOut: p => { addTrust(p, -25); S.people.forEach(q => { if (q !== p) addTrust(q, -3); moodlet(q, 'You lied to us', -6, 900); }); world('🗣️', `${fn(p)} found out what you told them wasn't true, and told everyone at dinner.`); },
+  rumorGone: p => { S.people.forEach(q => moodlet(q, 'They opened the stores for us', 7, 700)); },
+  hummed: p => { noise(0, 0, 150, 6); S.people.forEach(q => moodlet(q, 'Music, after dark', 10, 500)); world('🎸', `${fn(p)} played until the fire went out. Half the camp sang. Some things outside the wall heard it too.`); },
+  invent: p => { if (skillOf(p, 'tech') > 4 || Math.random() < .5) { S.up.work = Math.min(UPGRADES.work.max, S.up.work + 1); world('🛠️', `${fn(p)}'s contraption works. Workshop improved for free.`); } else { S.towers[0] && (S.towers[0].hp *= .5); world('💥', `${fn(p)}'s contraption blew up and took part of a turret with it. Nobody died. ${fn(p)} has no eyebrows.`); } },
+  grudge: p => { const e = S.people.filter(q => q !== p).sort((a, b) => relOf(p, a) - relOf(p, b))[0]; if (e) { moodlet(e, `${fn(p)} got the backing and I didn't`, -12, 900); world('⚖️', `${fn(e)} heard you sided with ${fn(p)}. They've stopped eating with the rest of you.`); } },
+};
+function laterTick() { const L = S.later ||= [], now = S.t; for (let i = L.length - 1; i >= 0; i--) { const q = L[i]; if (q.at > now) continue; L.splice(i, 1); const p = S.people.find(x => x.id === q.id); if (!p) { continue; } if (q.tree) { p.cb = q.tree; S.wantsT = p.id; feed('💬', `${fn(p)} wants a word with you`); } else if (LATER[q.k]) LATER[q.k](p); } }
+
+// each node: lines, then choices [label, next node or null, effects]
+const TREES = {
+  debt: { w: p => .7, a: [["I need to borrow medicine. Five doses. It's for {o}. I mean, it's for a friend. I'll pay it back, you know I will.", "I've got a friend outside the wall, a {bio} like me, sick, and I need five doses. I'd pay it back double. Please don't tell {f}."], [["How sick, and who's the friend?", 'b', {}], ["Here. Five doses. (5 💊)", 'c', { pay: { meds: 5 }, t: 8, m: 8, later: [700, 'debtPaid'], need: { meds: 5 } }], ["No. We don't have it to give.", 'n', { t: -4 }]]],
+    b: [["*looks at the floor* It doesn't matter who.", "You don't know them. And if you did you'd say no."], [["Then the answer's no, until you tell me the truth.", 't', { t: 2 }], ["Fine. Take it. (5 💊)", 'c2', { pay: { meds: 5 }, later: [700, 'debtSkip'], need: { meds: 5 } }]]],
+    c: [["You won't regret it. I won't forget this.", "Thank you. I mean it. I'll find a way."], []], c2: [["…Thanks. You're a good person. Maybe that's a problem.", "I'll make it right. I will."], []],
+    n: [["Right. I'll tell them. Somehow.", "No, I get it. {low} and everything. I get it."], []],
+    t: [["…There's no friend. I owe someone. I made a trade I shouldn't have. It's handled. Forget it.", "It's for me. It's not what you think. It's not a bite. Just… I can't sleep without it. Okay? That's the truth."], [["Thank you for telling me. We'll sort it out.", null, { t: 14, m: 10, mem: 'You made me tell the truth and didn\'t hate me for it' }], ["That's not something I can have in this camp.", null, { t: -10, m: -8 }]]] },
+  watch: { w: p => .8, a: [["I fell asleep on watch last night. Nobody saw. I don't know why I'm telling you.", "I have to tell you something. Fourth hour last night, I closed my eyes on the wall. Woke up an hour later. Nothing happened. Nothing happened, right?"], [["You did the right thing telling me. Get some rest.", null, { t: 10, m: 8, res: {}, ml: ['Rested after confessing', 6], do: p => { p.need.rest = 100; } }], ["We'll keep this between us.", null, { t: 6, later: [600, 'sleepCaught'] }], ["Tell the camp, or I will.", 'pub', {}], ["People die when you do that.", null, { t: -6, m: -12, train: 'shoot', ml: ['Got chewed out', -8] }]]],
+    pub: [["…Okay. I'll say it at dinner.", "You're serious. Okay."], [["I'll stand next to you when you do.", null, { t: 12, m: 2, camp: ['Honesty on the wall', 4] }], ["Your mess. Handle it.", null, { t: -5, m: -8, camp: ['Honesty on the wall', 3] }]]] },
+  dog: { w: p => .6, a: [["There's a dog outside the east fence. Skinny. It keeps coming back. I've been saving it crusts. Don't be mad.", "I found a dog. Real one, not a dead one, I checked. It sat with me on my whole shift. Can it stay?"], [["Bring it in. Everyone could use a dog. (4 🥫)", 'y', { pay: { food: 4 }, need: { food: 4 }, t: 10, m: 18, camp: ['There\'s a dog now', 7, 900], cb: [900, 'dog2'], flag: 'dog' }], ["Has it been checked for bites?", 'bit', {}], ["No. It's another mouth, and it draws them.", 'n', { t: -7, m: -14 }]]],
+    bit: [["I looked it over. Mostly. There's a torn ear, could be anything.", "It's got an old scar on the leg. Old, though. Probably."], [["Then we keep it penned a few days first.", 'y2', { t: 8, m: 10, later: [800, 'dogBark'] }], ["Mostly isn't good enough.", 'n', { t: -4, m: -8 }], ["I'll take the chance.", 'y3', { t: 8, m: 12, later: [600, Math.random() < .5 ? 'dogBite' : 'dogBark'] }]]],
+    y: [["You mean it? I'm naming it after {person0}. It has the same eyes.", "Oh, thank you. Thank you. I'm calling it Biscuit. Don't laugh."], []], y2: [["That's fair. I'll sit with it. Every day.", "Okay. Smart. I'd have done the same, if I were smart."], []], y3: [["You won't regret it.", "Good. Good dog. Hear that? You're staying."], []], n: [["Yeah. Okay. I'll stop feeding it.", "You could have just said you don't like dogs."], []] },
+  dog2: { w: () => 0, a: [["You should see how that dog is with the kids. With everyone. {f} talks to it more than to me.", "Biscuit barked at nothing last night. Then twenty minutes later there was something. I'm just saying, that dog's on the payroll."], [["Best decision I ever made here.", null, { t: 6, m: 6, later: [300, 'dogBark'] }], ["Don't get too attached.", null, { t: -2 }]]] },
+  letter: { w: p => .7, a: [["I've been writing letters. To {person0}. I know there's no mail. I'd like you to read one.", "I wrote something down. It's for someone who is probably dead. Would you read it? I don't want to be the only one who knows it exists."], [["I'll read it.", 'r', {}], ["Why not read it on the radio? Somebody might hear.", 'rad', {}], ["You shouldn't dwell on this.", null, { t: -6, m: -6 }]]],
+    r: [["It's short. It says I'm sorry about the thing with {thing}. It says I still {habit}, which I don't, but they'd like that.", "Mostly it's about {place0}. There's a part about {thing} that I rewrote eleven times."], [["They'd be glad you wrote it.", null, { t: 10, m: 12, mem: 'You read my letter' }], ["You kept the best part for last. I'd send it.", 'rad', { t: 6 }]]],
+    rad: [["On the radio. With everyone listening. …Would you stand there with me?", "Out loud. Huh. {f} would make fun of me for a year. Okay."], [["I'll hold the mic. (Some noise tonight)", null, { t: 12, m: 16, do: p => { radio(fn(p), `This is for anyone who knew ${p.bio === 'nobody' ? 'me' : 'a ' + p.bio} from around here. I'm still alive. I still ${pick(GR.habit)}. That's all.`); noise(0, 0, 60, 3); (S.later ||= []).push({ at: S.t + 1000, tree: 'letter2', id: p.id }); } }]]] },
+  letter2: { w: () => 0, a: [["Someone answered. It was four seconds of static and then a voice said 'heard you.' That's all. It's not who I wanted. I've been crying for an hour and I feel great.", "'Heard you.' That's what they said on the radio last night. Just that. I don't know who. I don't care who."], [["Then you're not alone out here.", null, { t: 12, m: 22, camp: ['Someone answered on the radio', 6] }], ["Could be bait. Be careful who you tell.", null, { t: -2, m: -4 }]]] },
+  rumor: { w: p => S.res.food > 20 ? .7 : 0, a: [["You should know what's being said. People think you're holding back food. That there's a second pantry.", "I'm only telling you because you'd want to know. {e} told {o} you're eating better than the rest of us."], [["Open the stores, let them count. (Everyone checks)", 'open', { t: 8, later: [60, 'rumorGone'] }], ["Who said it?", 'who', {}], ["Let them talk.", 'let', { t: -2, camp: ['You didn\'t answer the rumors', -4] }]]],
+    open: [["That's going to shut them up. Or it's going to show them how little there is.", "Ballsy. I'll help count."], []], let: [["Your funeral. Figure of speech.", "Sure. That always works."], []],
+    who: [["…I don't want to be the reason someone goes hungry.", "{e}. But you didn't hear it from me. What are you going to do?"], [["Nothing. I just wanted to know who's scared.", null, { t: 8 }], ["I'll have a word with them.", null, { t: -3, later: [200, 'grudge'], mem: 'I told you who said it, and you went after them' }]]] },
+  bet: { w: p => psyche(p).humor > .4 ? .7 : .1, a: [["Bet you a can of beans we lose no one tonight.", "I've got a bet going with {o}. Who runs out of luck first, you or the wall. Want in?"], [["You're on. One can.", null, { t: 5, m: 5, later: [300, 'betWin'] }], ["We don't bet on that.", 'no', { t: -3 }], ["What are the odds on me?", 'odds', {}]]], no: [["Fine, fine. Superstitious.", "You're no fun, {you}. But okay."], []], odds: [["Better than last week. Don't let it go to your head.", "{o} has you at three to one. I took it, for the record. On you."], [["I'm touched. Keep the beans.", null, { t: 8, m: 6 }]]] },
+  seeds: { w: p => .6, a: [["I've been carrying these since before. Heirloom tomato seeds, from {person0}. I was going to eat them last month, I got that close. Do we plant them?", "These are the last seeds my family saved. They've been in my boot. If we plant them I need your word nobody digs them up for a bad night."], [["Plant them. You have my word. (Takes a while)", 'y', { t: 12, m: 10, flag: 'seedVow', later: [1500, 'seeds'] }], ["Trade them with a passing band instead.", null, { t: -4, res: { scrap: 15 }, mem: 'You sold my family\'s seeds' }], ["Keep them safe for now.", null, { t: 3 }]]], y: [["I'll sit up with them like babies. Thank you.", "Then they're yours as much as mine, {you}."], []] },
+  cache: { w: p => .6, a: [["Before I got here, I hid some things. Ammo, tools. Four blocks past the line. Took a lot to carry. I never told anyone. It may still be there.", "I buried a footlocker behind {place0}. My whole plan was to come back alone for it. I'm telling you instead. I think that means I live here now."], [["Go get it. Take someone.", 'go', {}], ["Why tell me now?", 'why', {}], ["Too risky. Leave it.", null, { t: -3 }]]], go: [["I'll be back by dark.", "Okay. {f}'s coming, I already asked."], [["Be careful.", null, { later: [420, Math.random() < .65 ? 'cacheGood' : 'cacheBad'], t: 5 }]]], why: [["Because I watched you last night with {o}. I decided.", "Because I'm tired of having a way out."], [["Then let's go get your way out.", null, { t: 12, later: [420, Math.random() < .7 ? 'cacheGood' : 'cacheBad'] }]]] },
+  cousin: { w: p => (S.rivals || []).some(R => !R.dead && R.rel <= -30) ? .55 : 0, a: [["One of the people out there, in that gang. I think it's my cousin. I saw the walk. I'd know that walk anywhere.", "My cousin's with them. Raiders. I've known for a week. I could get a message over. I wanted you to hear it from me."], [["Send it. Tell them we want peace.", null, { t: 12, m: 6, later: [500, Math.random() < .6 ? 'cousin' : 'cousinBad'], mem: 'You trusted me about my cousin' }], ["Have you told them anything about us?", 'q', {}], ["Stay away from that fence. That's an order.", null, { t: -6, m: -6 }]]], q: [["No! …Not on purpose. We waved. That's all.", "You think I would? After everything? Wow."], [["I believe you.", null, { t: 10 }], ["You're off the wall until I know more.", null, { t: -14, m: -12, mem: 'You took me off the wall over my cousin' }]]] },
+  lie: { w: p => (S.dead || []).length ? .8 : 0, a: [["I need to know something. {d}. Did they have a chance out there? Were you straight with us about that?", "{d}. You said it was quick. Was it quick?"], [["It was quick. They didn't suffer.", 'l', { t: 6, m: 8, do: p => { if (Math.random() < .4) (S.later ||= []).push({ at: S.t + 900, k: 'lieOut', id: p.id }); } }], ["No. It wasn't. I'm sorry.", 't', { t: 10, m: -10, ml: ['You told me the truth about it', 6, 800] }], ["I don't know. I wasn't there.", null, { t: 4, m: -2 }]]], l: [["Okay. Good. That's what I needed. Thanks.", "Okay. …Okay."], []], t: [["…Thank you. Everyone else keeps being nice to me about it.", "I knew it. I knew. It's better than wondering."], []] },
+  vow: { w: p => pTrust(p) > 45 ? .6 : 0, a: [["If I get bit and I'm not thinking straight, I want it to be you. Not {o}. You. Promise me.", "When it's my turn, don't let me walk around. Say you'd do it."], [["I promise.", 'p', { t: 16, flag: 'vow', mem: 'You gave me your word about the end' }], ["We have medicine. It won't come to that.", null, { t: -3, m: 2 }], ["Don't ask me that.", null, { t: 4, m: -4 }]]], p: [["Good. Then I can stop thinking about it. Want to talk about something stupid now?", "Okay. Okay. Now I can sleep."], [["What's the dumbest thing you've ever bought?", 'd', {}]]], d: [["{thing}. Twice.", "A lifetime warranty on {thing}."], [["That's terrible.", null, { m: 8, t: 3 }]]] },
+  title: { w: p => !S.title ? .7 : 0, a: [["The kids, well, not kids, the new people. They don't know what to call you. So what do we call you?", "We've got a problem. {o} calls you boss. {e} calls you worse. Pick something."], [["Boss is fine.", null, { do: () => S.title = 'boss', t: 2 }], ["Chief.", null, { do: () => S.title = 'chief', t: 3 }], ["Just use my name, I'm no better than anyone.", null, { do: () => S.title = 'friend', t: 7, camp: ['Doesn\'t put on airs', 3] }], ["Commander.", null, { do: () => S.title = 'commander', t: -2, camp: ['Commander? Really?', -2] }]]] },
+  feud: { w: p => S.people.some(q => q !== p && relOf(p, q) < -10) ? .9 : 0, a: [["{e} is going to get someone killed. Won't stay on rotation, won't listen. It's them or me on that wall.", "I can't work next to {e} anymore. I'm sorry. I've tried. One of us moves."], [["You're right. I'll back you.", null, { t: 10, later: [100, 'grudge'], mem: 'You took my side' }], ["Have you tried saying that to them?", 'a', {}], ["Grow up. Both of you.", null, { t: -7, m: -5 }]]], a: [["Have I… you think I want to talk to them?", "They'd laugh. …Fine. If you're there."], [["I'll be there, and I'll keep it short.", null, { t: 8, m: 6, do: p => { const e = S.people.filter(q => q !== p).sort((a, b) => relOf(p, a) - relOf(p, b))[0]; if (e) { (p.rel ||= {})[e.id] = (p.rel[e.id] || 0) + 25; (e.rel ||= {})[p.id] = (e.rel[p.id] || 0) + 25; } } }]]] },
+  service: { w: p => psyche(p).faith > .55 ? .8 : .05, a: [["Some of us want to hold a service. For the ones we lost. It'd mean an hour off the wall, and singing.", "I know you're busy. But {d} deserves words. Will you let us stop for an hour?"], [["Yes. And I'll say something too.", null, { t: 12, m: 14, camp: ['We stopped to remember', 9, 900], do: () => noise(0, 0, 80, 4) }], ["After the next night, when it's safe.", null, { t: 1, m: -2 }], ["The dead don't need songs. The wall does.", null, { t: -8, m: -10, camp: ['No time for the dead', -4] }]]] },
+  teach: { w: p => .7, a: [["I could teach people what I know, as a {bio}. Nobody's asked. I'm starting to think nobody's going to.", "You're wasting what I know. Let me run a class. An hour a day. Before I forget it all too."], [["Start tomorrow. Everyone goes once.", null, { t: 12, m: 14, do: p => { const k = bestSkill(p); S.people.forEach(q => q !== p && train(q, k, .4)); world('📚', `${fn(p)} is teaching the camp ${SK[k][1].toLowerCase()}.`); } }], ["Teach one person, someone who needs it.", null, { t: 7, m: 8, do: p => { const q = pick(S.people.filter(x => x !== p)); if (q) { train(q, bestSkill(p), 1.2); moodlet(q, `${fn(p)} is teaching me`, 8, 800); } } }], ["We need you working.", null, { t: -3, m: -6 }]]] },
+  neighbor: { w: p => .55, a: [["There's one at the south fence in a postal uniform. I know that uniform. I know that walk. That's my mailman. Every day he's there. Can someone just… I can't do it.", "I saw {person0} out there. Or what's left. It stands by the fence and I've been feeding my nerves with it for days."], [["I'll do it myself. You don't have to watch.", null, { t: 14, m: 10, mem: 'You took care of it so I didn\'t have to', pay: { ammo: 1 } }], ["You'll do it. I'll be next to you. It'll help.", 'w', {}], ["Nobody spends ammo on that.", null, { t: -9, m: -12 }]]], w: [["*a long time later* He always asked about my knee. Nobody ever asks about my knee.", "*afterward* Okay. Okay, that's done. Thank you for standing there."], [["How is your knee?", null, { t: 10, m: 16, train: 'shoot' }], ["Go get some food.", null, { t: 5, m: 6, train: 'shoot' }]]] },
+  music: { w: p => .6, a: [["I found a guitar in that last house. Three strings. I can make it work. Tonight, after dark, by the fire?", "We could use a song. Sound carries, I know. I still think we could use one."], [["Play. We need it.", null, { t: 8, m: 12, later: [120, 'hummed'] }], ["Daytime only, and quiet.", null, { t: 3, m: 6, camp: ['Someone was playing guitar', 4] }], ["Sound carries. No.", null, { t: -3, m: -6 }]]] },
+  invent: { w: p => .55, a: [["I've got an idea. Hear me out. Washing machine motor, sixty feet of chain, and every turret gets twice as mean. I need 30 scrap.", "So I've been working on something. It might be brilliant. It might also be a bomb. 30 scrap and I'll find out."], [["Do it. Far from anything flammable. (30 🔩)", null, { pay: { scrap: 30 }, need: { scrap: 30 }, t: 9, m: 12, later: [400, 'invent'] }], ["Draw it for me first.", 'dr', {}], ["Not with our scrap.", null, { t: -4, m: -6 }]]], dr: [["*hands you something that looks like a horse* That's the motor. Those are the legs. It doesn't have legs, that's a mistake.", "*draws for a while* You get it? No? Neither do I, entirely."], [["Fine. Build it. (30 🔩)", null, { pay: { scrap: 30 }, need: { scrap: 30 }, t: 12, m: 12, later: [400, 'invent'] }], ["Let's not.", null, { t: -1 }]]] },
+  birthday: { w: p => .5, a: [["It's my birthday. I think. I've been counting days and I might be off. I wasn't going to say anything.", "So I'm {night} nights older than when this started, and today's the day. Don't tell anyone. Unless you're going to."], [["Everyone's eating better tonight. (6 🥫)", null, { pay: { food: 6 }, need: { food: 6 }, t: 14, m: 25, camp: ['We had a birthday', 8, 800], mem: 'You remembered my birthday' }], ["Happy birthday. Take an hour.", null, { t: 8, m: 12 }], ["How old?", 'h', {}]]], h: [["Old enough to remember when you could buy a birthday cake. Whole cake. For one person.", "Don't ask. I've aged about thirty years since {person0} last said it."], [["We'll find you something sweet.", null, { t: 8, m: 14 }]]] },
+  doubt: { w: p => pTrust(p) < 45 ? 1 : .15, a: [["I'm going to say this once. I don't know if you're the right one to be doing this.", "Some of us were talking. If there was a vote, I don't know how it goes."], [["Then let's have that vote.", 'v', {}], ["What would you do differently?", 'd', {}], ["You're welcome to leave.", null, { t: -14, m: -12, mem: 'You told me I could leave' }]]], v: [["…You mean that? Nobody's ever offered.", "Huh. You'd really do it."], [["I mean it. And I'll live with the answer.", null, { t: 18, m: 8, camp: ['They offered us a vote', 8, 900], do: () => world('🗳️', 'A show of hands at dinner. You stayed in charge, and people looked each other in the eye.') }]]], d: [["Stop sending people past the line for {low}. Or at least go yourself sometimes.", "I'd tell people the numbers. All of them. We can take it."], [["You're right. Starting today.", null, { t: 14, m: 6, mem: 'You listened when I told you you were wrong' }], ["The numbers would scare them.", null, { t: -4 }]]] },
+};
+Object.assign(TREES, {
+  stolen: { w: p => S.res.food < 40 ? .8 : .2, a: [["I took food. Two cans, maybe three times. I was going to put it back. I'm telling you before someone else does.", "{o} is going to tell you someone's been in the stores. It was me. I'm hungry all the time and I can't make it stop."], [["Are you eating enough? Double your ration for a week. (4 🥫)", null, { pay: { food: 4 }, need: { food: 4 }, t: 14, m: 12, camp: ['Soft on thieves', -3] }], ["You work it off, double shifts.", null, { t: 1, m: -8, train: 'build' }], ["Tell everyone. They get to decide.", 'd', {}]]], d: [["*at dinner, they stand up and say it, and nobody says anything for a long time*", "*they say it, and {f} moves over to make room for them anyway*"], [["That took guts. It's over now.", null, { t: 10, m: 4, camp: ['Someone owned up', 4] }]]] },
+  kid: { w: p => .45, a: [["The youngest of us asked me what the sky used to look like with planes in it. I didn't know what to say.", "There's a kid at the fence who doesn't remember TV. None of it. I tried to explain a commercial. It's the saddest thing I've done."], [["Start a school. An hour a day.", null, { t: 10, m: 10, camp: ['There\'s a school now', 7, 900] }], ["Tell them the truth: it was mostly noise.", null, { t: 5, m: 5 }], ["We need them to learn the wall first.", null, { t: -2, m: -3, camp: ['We\'re arming children now', -3] }]]] },
+  stars: { w: p => isNight() ? 1 : .15, a: [["Come look. With the power out everywhere, you can see all of it. I never knew. I lived forty years under that.", "I found the Milky Way. It was there the whole time. Nobody told me."], [["Sit with them a while.", 's', {}], ["Get back on watch.", null, { t: -5, m: -7 }]]], s: [["*nobody says anything for a while* …Thanks. You can go. Actually don't.", "That one's Orion. That's the only one I know. I've been naming the rest after people. That one's {d}."], [["Which one's me?", 'm', {}], ["*stay until they fall asleep*", null, { t: 14, m: 18, mem: 'We looked at the stars' }]]], m: [["The dim one that doesn't move. It's a planet, I think. It's holding everything together and nobody notices.", "That one. No, that's a plane. …That's not a plane. There aren't any planes. Huh."], [["Very funny.", null, { t: 10, m: 14, mem: 'We looked at the stars' }]]] },
+  quitwall: { w: p => (p.mood ?? 60) < 45 ? 1 : .1, a: [["I can't shoot them anymore. They've got name tags. I looked at one last night and I can't. Put me somewhere else.", "I keep seeing faces. Not bad ones. Regular ones. I need off the wall for a while."], [["You're off. Go help with the food.", null, { t: 12, m: 14, do: p => { p.jobSet = S.t; } }], ["One more week. I need you up there.", null, { t: -4, m: -9, train: 'shoot' }], ["Who was it? The one with the name tag.", 'w', {}]]], w: [["Denise. It said Denise. She had a little pin of a cat.", "Gary. 'Ask me about our rewards program.' I almost did."], [["Then we bury Denise and Gary properly. All of us.", null, { t: 15, m: 16, camp: ['We buried some of them properly', 6] }]]] },
+  stranger: { w: p => .4, a: [["There was someone at the fence last night. Alive. They asked if {d} was here. By name. They knew {d}. Then they walked off.", "Somebody out there knows us. They asked for you, by what the others call you. I didn't say anything. I think."], [["Double the watch tonight.", null, { t: 6, m: 2, camp: ['Someone\'s watching us', -3] }], ["Next time, invite them in.", null, { t: 4, m: 4, res: {} }], ["You're seeing things. Get some rest.", null, { t: -6, m: -4, do: p => { p.need.rest = 100; } }]]] },
+  recipe: { w: p => .5, a: [["I can make something good out of what we've got. Don't ask what's in it. I need a little extra and an hour.", "I've been thinking about my mother's stew for a week. I think I can fake it. Give me 5 cans and the good pot."], [["Make it. For everyone. (5 🥫)", 'y', { pay: { food: 5 }, need: { food: 5 }, t: 9, m: 14, camp: ['Real food, for once', 9, 700], train: 'cook' }], ["Save it for a hard night.", null, { t: 0, m: -3 }], ["What's in it?", 'q', {}]]], y: [["You won't regret it. Well. You might, around midnight.", "Then get out of my kitchen. You're making the soup nervous."], []], q: [["I said don't ask. It had a good life. Probably.", "Potatoes, mostly. Some of the potatoes are not potatoes."], [["Make it anyway. (5 🥫)", 'y', { pay: { food: 5 }, need: { food: 5 }, t: 11, m: 12, camp: ['Real food, for once', 7, 700] }], ["No.", null, { t: -3, m: -3 }]]] },
+});
+const TREE_N = t => Object.keys(TREES).length;
+function treeEligible(p) { const done = p.trees ||= {}; return Object.entries(TREES).filter(([k, T]) => !done[k] && T.w(p) > 0 && (S.lastTree || {})[k] !== dayNo()); }
+function treeStart(p, k) { (p.trees ||= {})[k] = dayNo(); (S.lastTree ||= {})[k] = dayNo(); ensureLife(p); const s = psyche(p); s.talks++; DLG = { kind: 'tree', p, k, n: 'a', hist: [] }; preSpeed = speed || 1; speed = 0; DLG.say = treeLine(p); treeRender(); }
+function treeLine(p) { const c = vctx(p); c.gun = (S.people.filter(q => q !== p && isArmed(q)).map(q => GEAR[q.gear].n.toLowerCase())[0]) || 'weapon'; const T = TREES[DLG.k][DLG.n], ls = usable(T[0], c).filter(t => !saidSet().has(strHash(t))); const t = cap1(gram(pick(ls.length ? ls : T[0]), c)); markSaid(t); return voice(p, t).replace(/\bboss\b/g, ttl()); }
+function treeRender() { const p = DLG.p, s = psyche(p), T = TREES[DLG.k][DLG.n], opts = DLG.done ? [] : T[1] || [], role = JOBS[p.role] ? JOBS[p.role].n : 'Idle';
+  $('dlg').innerHTML = `<div class="dcard cine"><div class="dtop"><div class="pframe"><img src="${face(p)}"></div><div><h3>${p.name}</h3><small>${moodFace(p)} Former ${p.bio || 'nobody'} · ${role}</small></div></div>${DLG.hist.slice(-2).map(h => `<p class="hist">${h}</p>`).join('')}<p class="say" data-full="${DLG.say.replace(/"/g, '&quot;')}"></p>
+    <div class="dopts">${opts.map((o, i) => { const need = o[2] && o[2].need, bad = need && !canPay(need); return `<button onclick="treeAct(${i})" ${bad ? 'disabled' : ''}><span>${o[0]}${bad ? '<small>Not enough</small>' : ''}</span></button>`; }).join('')}${opts.length ? '' : '<button onclick="treeAct(-1)"><span class="oi">✕</span><span>Walk away</span></button>'}</div>
+    <small class="dfoot">Mood ${Math.round(p.mood ?? 60)} · Trust ${Math.round(s.trust)} · what you say here will be remembered · paused</small></div>`; $('dlg').classList.remove('hide'); typeSay(); sfx('radio', 0, 0, .25); }
+window.treeAct = i => { const p = DLG.p; if (i < 0) { $('dlg').classList.add('hide'); DLG = null; speed = preSpeed; return; } const o = TREES[DLG.k][DLG.n][1][i]; apply(p, o[2]); DLG.hist.push(`<b>You:</b> ${o[0]}`); p.need.social = Math.min(100, p.need.social + 8);
+  if (o[1]) { DLG.n = o[1]; DLG.say = treeLine(p); } else { const c = vctx(p), f = o[2] || {}, key = (f.t || 0) > 0 ? 'r_good' : (f.t || 0) < 0 ? 'r_bad' : 'r_mid'; let t = ''; for (let n = 0; n < 8; n++) { t = cap1(gram(`{${key}}`, c)); if (markSaid(t)) break; } DLG.say = voice(p, t); DLG.done = true; } treeRender(); };
+window.talkTo = (o => id => { const p = S.people.find(q => q.id === id); if (!p) return o(id); if (p.cb && TREES[p.cb]) { closeSheet(); const k = p.cb; p.cb = null; return treeStart(p, k); } if (S.wants && S.wants.id === id) return o(id); const E = treeEligible(p); if (E.length && Math.random() < .55) { closeSheet(); let tot = E.reduce((a, [, T]) => a + T.w(p), 0), x = Math.random() * tot; for (const [k, T] of E) { x -= T.w(p); if (x <= 0) return treeStart(p, k); } } o(id); })(window.talkTo);
+worldTick = (o => () => { o(); laterTick(); })(worldTick);
+
+// ================= kit: weapons and armor come out of houses, and there's never enough =================
+const PARTS = { cloth: ['🧵', 'Cloth & straps'], pads: ['🧽', 'Foam padding'], leather: ['👞', 'Leather'], pipe: ['🪈', 'Pipe & tubing'], spring: ['🌀', 'Springs & screws'], plate: ['🛡️', 'Steel plate'], gunpart: ['🔩', 'Gun parts'] };
+const HOUSE_STRIP = { house: ['cloth', 'cloth', 'pads', 'pads', 'leather', 'spring', 'pipe', 'gunpart'], apt: ['cloth', 'cloth', 'pads', 'spring', 'leather', 'gunpart'], com: ['pipe', 'spring', 'plate', 'plate', 'pads', 'gunpart'], shed: ['pipe', 'pipe', 'spring', 'plate', 'leather'] };
+const HOUSE_FIND = { house: ['bat', 'bat', 'pistol', 'revolver', 'shotgun', 'rifle', 'knee', 'bike', 'coat', 'gloves'], apt: ['bat', 'pistol', 'revolver', 'knee', 'bike', 'coat', 'gloves'], com: ['machete', 'nailgun', 'hardhat', 'gloves', 'moto', 'shin', 'elbow', 'carbine'], shed: ['machete', 'bat', 'crossbow', 'nailgun', 'hardhat', 'gloves'] };
+// recipes are in stripped parts; the better the gun, the more real gun parts it eats
+const GEAR_P = { bat: { pipe: 1 }, machete: { plate: 1, leather: 1 }, crossbow: { spring: 3, pipe: 2 }, nailgun: { spring: 3, pipe: 1 }, pistol: { gunpart: 2, spring: 1 }, revolver: { gunpart: 2, spring: 2 }, sawnoff: { gunpart: 2, pipe: 2 }, shotgun: { gunpart: 3, pipe: 2 }, rifle: { gunpart: 4, pipe: 1, spring: 1 }, smg: { gunpart: 5, spring: 3 }, carbine: { gunpart: 6, spring: 2, pipe: 1 }, marksman: { gunpart: 7, pipe: 2 }, lmg: { gunpart: 9, spring: 4, plate: 1 } };
+const ARMOR = {
+  knee: { n: 'Knee pads', i: '🦵', s: 'legs', a: .05, p: { pads: 1, cloth: 1 } }, shin: { n: 'Hockey shin guards', i: '🏒', s: 'legs', a: .09, up: 'knee', p: { pads: 2, plate: 1, cloth: 1 } }, legplate: { n: 'Riot leg guards', i: '🦿', s: 'legs', a: .14, up: 'shin', p: { plate: 3, leather: 2 } },
+  gloves: { n: 'Work gloves', i: '🧤', s: 'arms', a: .04, p: { leather: 1, cloth: 1 } }, elbow: { n: 'Elbow pads', i: '💪', s: 'arms', a: .07, up: 'gloves', p: { pads: 2, cloth: 1 } }, bracer: { n: 'Forearm guards', i: '🦾', s: 'arms', a: .12, up: 'elbow', p: { plate: 2, leather: 2 } },
+  bike: { n: 'Bike helmet', i: '🚲', s: 'head', a: .05, p: { pads: 2, cloth: 1 } }, hardhat: { n: 'Hard hat', i: '⛑️', s: 'head', a: .09, up: 'bike', p: { plate: 1, pads: 1 } }, riothelm: { n: 'Riot helmet', i: '🪖', s: 'head', a: .14, up: 'hardhat', p: { plate: 3, pads: 2 } },
+  coat: { n: 'Canvas work coat', i: '🧥', s: 'body', a: .07, p: { cloth: 3 } }, moto: { n: 'Motorcycle jacket', i: '🏍️', s: 'body', a: .13, up: 'coat', p: { leather: 3, pads: 2 } }, vest: { n: 'Plate carrier vest', i: '🦺', s: 'body', a: .22, up: 'moto', p: { plate: 4, cloth: 3, pads: 2 } },
+};
+const SLOTS = { head: 'Head', body: 'Body', arms: 'Arms', legs: 'Legs' };
+const NEXT_A = Object.fromEntries(Object.entries(ARMOR).filter(([, a]) => a.up).map(([k, a]) => [a.up, k]));
+const fmtP = c => Object.entries(c).map(([k, v]) => `${v}${PARTS[k][0]}`).join(' ');
+const hasP = c => Object.entries(c).every(([k, v]) => (S.parts[k] || 0) >= v);
+const payP = c => { if (!hasP(c)) return false; for (const k in c) S.parts[k] -= c[k]; return true; };
+function kitInit() { S.parts ||= { cloth: 6, pads: 4, leather: 2, pipe: 2, spring: 1, plate: 0, gunpart: 0 }; S.armor ||= {}; S.arms ||= {}; }
+const armorOf = p => p && p.kit ? Math.min(.6, Object.values(p.kit).reduce((a, k) => a + (ARMOR[k] ? ARMOR[k].a : 0), 0)) : 0;
+const isArmed = p => (p.gear || 'fists') !== 'fists', isFirearm = k => GEAR[k] && GEAR[k].r > 5 && GEAR[k].a > 0;
+// each building gives up only so much, however many times it's searched
+function stripHouse(x, y) { kitInit(); const b = nearestB(x, y, 45), kind = b ? b.kind : 'house', st = b ? bstate(b) : { l: .4 }, K = b ? bKey(b) : null, used = K ? ((S.bs ||= {})[K] ||= st).p || 0 : 0; if (used >= (kind === 'com' ? 4 : 2)) return; if (K) S.bs[K].p = used + 1;
+  const got = {}; for (let n = 0; n < 2; n++) { const q = pick(HOUSE_STRIP[kind] || HOUSE_STRIP.house); if (q === 'gunpart' && Math.random() > .35) continue; got[q] = (got[q] || 0) + 1; S.parts[q] = (S.parts[q] || 0) + 1; }
+  if (Math.random() < .09) { const f = pick(HOUSE_FIND[kind] || HOUSE_FIND.house); learnBp(f, 'taking a found one apart', false); if (GEAR[f]) { S.arms[f] = (S.arms[f] || 0) + 1; world(GEAR[f].i, `Scavengers pulled a ${GEAR[f].n.toLowerCase()} out of a ${b && b.kind === 'com' ? 'storefront' : 'house'}. It still works.`); } else { S.armor[f] = (S.armor[f] || 0) + 1; toast(`${ARMOR[f].i} Scavengers found ${ARMOR[f].n.toLowerCase()}`); } } }
+function stripBp(x, y) { const b = nearestB(x, y, 45); bpDrop(b ? b.kind : 'house'); }
+function gearTickK() { kitInit(); const list = S.people.slice().sort((a, b) => (!!b.kitFirst - !!a.kitFirst) || ((b.role === 'guard') - (a.role === 'guard'))); const G = Object.keys(GEAR).filter(k => k !== 'fists').sort((a, b) => GEAR[b].d / GEAR[b].cd - GEAR[a].d / GEAR[a].cd), free = { ...S.arms }, A = { ...S.armor };
+  for (const p of list) { const k = G.find(g => free[g] > 0), was = p.gear || 'fists'; p.gear = k || 'fists'; if (k) free[k]--; const nk = {}; for (const s in SLOTS) { const q = Object.keys(ARMOR).filter(a => ARMOR[a].s === s && A[a] > 0).sort((a, b) => ARMOR[b].a - ARMOR[a].a)[0]; if (q) { nk[s] = q; A[q]--; } }
+    if (S.t > 5 && p.kit !== undefined) { if (k && was !== k && was === 'fists') { moodlet(p, `Finally got a ${GEAR[k].n.toLowerCase()}`, 10, 500); addTrust(p, 3); remember(p, `You put a ${GEAR[k].n.toLowerCase()} in my hands`); } for (const s in nk) if (!p.kit[s]) { moodlet(p, `Got ${ARMOR[nk[s]].n.toLowerCase()}`, 5, 400); addTrust(p, 1); } }
+    p.kit = nk; } }
+gearTick = gearTickK;
+window.craftGear = k => { kitInit(); bpInit(); if (!GEAR_P[k] || !S.bps[k] || bpNeed(k) > benchLv() || !payP(GEAR_P[k])) return; S.arms[k] = (S.arms[k] || 0) + 1; sfx('build', 0, 0, .4); gearTick(); armorySheet(); };
+window.craftArmor = k => { kitInit(); bpInit(); if (!S.bps[k] || bpNeed(k) > benchLv() || !payP(ARMOR[k].p)) return; S.armor[k] = (S.armor[k] || 0) + 1; sfx('build', 0, 0, .4); gearTick(); armorySheet(); };
+window.upArmor = k => { kitInit(); bpInit(); const n = NEXT_A[k]; if (!n || !(S.armor[k] > 0) || !S.bps[n] || bpNeed(n) > benchLv() || !payP(ARMOR[n].p)) return; S.armor[k]--; S.armor[n] = (S.armor[n] || 0) + 1; sfx('build', 0, 0, .4); gearTick(); armorySheet(); };
+window.kitFirst = id => { const p = S.people.find(q => q.id === id); if (!p) return; p.kitFirst = !p.kitFirst; gearTick(); armorySheet(); };
+// ---------- blueprints: you can only build what you've learned, at the bench in the Armory ----------
+let benchTab = 'bench';
+const BP_START = ['bat', 'knee', 'gloves', 'bike', 'coat', 'shin', 'elbow', 'hardhat', 'moto'];
+const BP_MIL = ['carbine', 'marksman', 'lmg', 'vest', 'riothelm', 'legplate', 'bracer'];
+const BP_SRC = { house: ['a hunting magazine', 'a handwritten notebook in a nightstand', 'a gun safe manual', 'printouts in a basement', 'a dead man\'s workshop notes'], apt: ['a survivalist forum printout', 'a paperback field manual', 'notes taped inside a closet'], com: ['a service manual behind the counter', 'a supplier\'s binder', 'a shop\'s repair files'], shed: ['plans pinned over a workbench', 'a grease-stained how-to book'] };
+const bpItem = k => GEAR[k] ? { n: GEAR[k].n, i: GEAR[k].i, rec: GEAR_P[k], gun: true } : { n: ARMOR[k].n, i: ARMOR[k].i, rec: ARMOR[k].p, gun: false };
+const BP_ALL = () => [...Object.keys(GEAR_P), ...Object.keys(ARMOR)];
+const benchLv = () => 1 + (S.up.armory || 0);
+const bpNeed = k => { const r = bpItem(k).rec, g = r.gunpart || 0; return g >= 7 || k === 'vest' || k === 'riothelm' || k === 'legplate' ? 3 : g >= 5 || k === 'bracer' ? 2 : 1; };
+function bpInit() { if (S.bps) return; S.bps = {}; BP_START.forEach(k => S.bps[k] = { d: dayNo(), src: 'Known from the start' }); for (const k in S.arms || {}) if (S.arms[k] > 0 && GEAR_P[k]) S.bps[k] = { d: dayNo(), src: 'Copied from one you own' }; for (const k in S.armor || {}) if (S.armor[k] > 0) S.bps[k] = { d: dayNo(), src: 'Copied from one you own' }; }
+function learnBp(k, src, quiet) { bpInit(); if (S.bps[k] || !(GEAR_P[k] || ARMOR[k])) return false; S.bps[k] = { d: dayNo(), src }; const I = bpItem(k); if (!quiet) { world('📐', `New blueprint: ${I.n}. From ${src}.`); sfx('pickup', 0, 0, .6); } return true; }
+function bpDrop(kind) { bpInit(); if (Math.random() > (kind === 'com' ? .16 : .1)) return; const left = BP_ALL().filter(k => !S.bps[k] && !BP_MIL.includes(k)); if (!left.length) return; const k = left.sort((a, b) => ((bpItem(a).rec.gunpart || 0) - (bpItem(b).rec.gunpart || 0)) + rnd(-3, 3))[0]; learnBp(k, pick(BP_SRC[kind] || BP_SRC.house)); }
+function bpTick() { bpInit(); for (const s of S.sh || []) if (s.own && !s.bpGot) { s.bpGot = true; const left = BP_MIL.filter(k => !S.bps[k]); if (left.length) learnBp(pick(left), `the files at ${s.name}`); } }
+const tabBtn = (k, l) => `<button class="${benchTab === k ? 'on' : ''}" onclick="benchTab='${k}';armorySheet()">${l}</button>`;
+function benchHtml() { bpInit(); const lv = benchLv(), lock = k => bpNeed(k) > lv ? `Needs bench Lv ${bpNeed(k)}` : '';
+  const known = k => S.bps[k], miss = c => Object.entries(c).filter(([k, v]) => (S.parts[k] || 0) < v).map(([k]) => PARTS[k][1]).join(', ');
+  const aRow = ([k, a]) => { const owned = S.armor[k] || 0, sub = `${SLOTS[a.s]} · ${Math.round(a.a * 100)}% protection · ${a.up ? ARMOR[a.up].n + ' + ' : ''}${fmtP(a.p)}${lock(k) ? ` · 🔒 ${lock(k)}` : !hasP(a.p) ? ` · short on ${miss(a.p)}` : ''}`; return `<div class="row"><div>${a.i} ${a.n} × ${owned}<small>${sub}</small></div>${a.up ? btn('Upgrade', `upArmor('${a.up}')`, !(S.armor[a.up] > 0) || !hasP(a.p) || !!lock(k)) : btn('Make', `craftArmor('${k}')`, !hasP(a.p) || !!lock(k))}</div>`; };
+  const gRow = ([k, c]) => { const g = GEAR[k]; return `<div class="row"><div>${g.i} ${g.n} × ${S.arms[k] || 0}<small>${g.r > 5 ? g.r + ' m range' : 'Hand to hand'} · hits for ${g.d} · ${fmtP(c)}${lock(k) ? ` · 🔒 ${lock(k)}` : !hasP(c) ? ` · short on ${miss(c)}` : ''}</small></div>${btn('Make', `craftGear('${k}')`, !hasP(c) || !!lock(k))}</div>`; };
+  const W = Object.entries(GEAR_P).filter(([k]) => known(k)), A = Object.entries(ARMOR).filter(([k]) => known(k)), left = BP_ALL().length - Object.keys(S.bps).filter(k => GEAR_P[k] || ARMOR[k]).length;
+  return `<div class="row"><div>🛠️ Workbench Lv ${lv}<small>${lv < 3 ? `Upgrade the Armory at Base for Lv ${lv + 1}: better guns and heavy armor` : 'Fully equipped'}</small></div></div>
+    <div class="row" style="display:block"><b>Stripped from houses</b><div><b>${Object.entries(PARTS).map(([k, v]) => `${v[0]} ${S.parts[k] || 0}`).join(' &nbsp; ')}</b></div><small>${Object.entries(PARTS).map(([, v]) => v[0] + ' ' + v[1]).join(' · ')}</small></div>
+    <h4>Weapons</h4>${W.map(gRow).join('')}<h4>Armor</h4>${A.map(aRow).join('')}<small style="color:var(--dim)">${left} blueprint${left === 1 ? '' : 's'} still out there. Search buildings and capture strongholds to find them.</small>`; }
+function bpCatHtml() { bpInit(); const all = BP_ALL(), got = all.filter(k => S.bps[k]).length, card = k => { const I = bpItem(k), b = S.bps[k]; return b ? `<div class="row"><div>${I.i} <b>${I.n}</b><small>${I.gun ? `${GEAR[k].r > 5 ? GEAR[k].r + ' m' : 'Melee'} · hits for ${GEAR[k].d}` : `${SLOTS[ARMOR[k].s]} · ${Math.round(ARMOR[k].a * 100)}% protection`} · bench Lv ${bpNeed(k)}</small><small>📐 ${b.src}, day ${b.d}</small></div></div>` : `<div class="row" style="opacity:.6"><div>❔ <b>${I.gun ? 'Unknown weapon' : SLOTS[ARMOR[k].s] + ' armor'}</b><small>${BP_MIL.includes(k) ? 'Military design. Capture a stronghold' : 'Search buildings. Shops have the best odds'}</small></div></div>`; };
+  return `<small style="color:var(--dim)">${got} of ${all.length} blueprints learned. Finding a working item also teaches you to copy it.</small><h4>Weapons</h4>${Object.keys(GEAR_P).map(card).join('')}<h4>Armor</h4>${Object.keys(ARMOR).map(card).join('')}`; }
+function crewHtml() { gearTick(); const P = S.people, nA = P.filter(isArmed).length, nK = P.filter(p => Object.keys(p.kit || {}).length).length, ang = P.filter(p => p.kitMad > 0).length;
+  return `<small style="color:var(--dim)">${nA} of ${P.length} armed · ${nK} with any armor${ang ? ` · <b style="color:var(--red)">${ang} resent going without</b>` : ''}. Guards get the best first. ⭐ moves someone to the front of the line.</small>${P.map(p => `<div class="row"><div>${fn(p)}<small>${GEAR[p.gear || 'fists'].i || '✊'} ${GEAR[p.gear || 'fists'].n}${Object.values(p.kit || {}).length ? ' · ' + Object.values(p.kit).map(k => ARMOR[k].n).join(', ') : ' · no armor'} · ${Math.round(armorOf(p) * 100)}% protected</small></div>${btn(p.kitFirst ? '⭐ First' : '☆', `kitFirst(${p.id})`)}</div>`).join('')}`; }
+function kitSheetHtml() { kitInit(); return benchTab === 'cat' ? bpCatHtml() : benchTab === 'crew' ? crewHtml() : benchHtml(); }
+function wearTick() { for (const k in S.arms) { if (!S.arms[k]) continue; const n = S.arms[k], ch = isFirearm(k) ? .012 : .03; for (let i = 0; i < n; i++) if (Math.random() < ch) { S.arms[k]--; world('💔', `A ${GEAR[k].n.toLowerCase()} broke beyond repair.`); } } for (const k in S.armor) for (let i = S.armor[k] | 0; i > 0; i--) if (Math.random() < .012) { S.armor[k]--; toast(`${ARMOR[k].i} A set of ${ARMOR[k].n.toLowerCase()} fell apart`); } }
+// people notice who got what
+moodlets = (o => p => { const L = o(p), others = S.people.filter(q => q !== p); if (others.length && p.kit) { const armed = others.filter(isArmed).length / others.length, cov = others.filter(q => Object.keys(q.kit || {}).length).length / others.length, mad = psyche(p).temper > .55;
+    if (!isArmed(p) && armed > 0) L.push([p.role === 'guard' ? 'Sent to the wall with bare hands' : mad ? 'Others got weapons. I got nothing' : 'Everyone is armed but me', -Math.round((p.role === 'guard' ? 8 : 3) + armed * 7)]);
+    if (!Object.keys(p.kit).length && cov > 0) L.push([mad ? 'Treated as if I\'m expendable' : 'Nobody thought to protect me', -Math.round(2 + cov * 6)]);
+    if (isArmed(p) && armorOf(p) >= .2) L.push(['Well equipped', 4]); if (isArmed(p) && armed < .4 && psyche(p).warm > .65) L.push(['Guilty about having a weapon when others don\'t', -2]); } return L; })(moodlets);
+function kitTick() { kitInit(); bpTick(); if (S.t - (S.kitT ?? -99) < 30) return; S.kitT = S.t; gearTick(); if ((S.wearD ?? dayNo()) !== dayNo()) wearTick(); S.wearD = dayNo();
+  for (const p of S.people) { const others = S.people.filter(q => q !== p), any = others.some(isArmed) || others.some(q => Object.keys(q.kit || {}).length), bare = !isArmed(p) && !Object.keys(p.kit || {}).length, s = psyche(p); p.kitMad = bare && any ? (p.kitMad || 0) + 1 : Math.max(0, (p.kitMad || 0) - 2); if (p.kitMad > 2) addTrust(p, s.temper > .55 ? -.5 : -.2);
+    if (p.kitMad >= 12 && !p.cb && (p.kitAsk ?? -9) + 4 <= dayNo()) { p.kitAsk = dayNo(); if (p.trees) delete p.trees.nokit; p.cb = 'nokit'; feed('😠', `${fn(p)} wants to talk about who gets weapons`); if (s.temper > .8 && Math.random() < .4) S.people.forEach(q => q !== p && !isArmed(q) && moodlet(q, `${fn(p)} is saying what the rest of us think`, -3, 300)); } } }
+Object.assign(TREES, { nokit: { w: () => 0, a: [["{f} has a {gun} and I've got my hands. Do you know what it's like standing next to that when they come? Am I worth less than them?", "I counted. Everyone with armor, everyone with a gun. I'm not on that list. So tell me what I'm for here.", "I'm not angry. I'm just tired of being the one who gets sent out in a T-shirt. Okay, I'm a little angry."], [["You're next. Top of the list. (Moves them first)", 'y', { t: 8, m: 8, do: p => { p.kitFirst = true; p.kitMad = 0; gearTick(); } }], ["There isn't enough. I'm stripping every house I can.", 'n', {}], ["I give gear to who earns it.", null, { t: -12, m: -14, mem: 'You told me I hadn\'t earned protection', ml: ['Told I haven\'t earned it', -10, 900] }]]], y: [["Okay. I'll believe it when it's on me.", "That's all I wanted to hear. Don't make me ask again."], []], n: [["Then let me go look too. I'd rather find my own than wait.", "I know. I've seen the piles. It still feels how it feels."], [["Fair. Be careful out there.", null, { t: 5, m: 3, do: p => { p.kitMad = 4; } }], ["I need you here.", null, { t: -2, m: -3 }]]] } });
+worldTick = (o => () => { o(); kitTick(); })(worldTick);
 
 // ================= radio =================
 function radio(from, msg) {
