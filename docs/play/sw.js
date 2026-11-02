@@ -1,6 +1,6 @@
 // Dead Grid service worker: the game works offline once loaded and updates itself with every release.
 // VERSION is bumped by `apkship version` together with the game, so each release gets a fresh cache.
-const VERSION = "2.0.0";
+const VERSION = "2.0.1";
 const CACHE = 'deadgrid-' + VERSION;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './vendor/leaflet/leaflet.css', './vendor/leaflet/leaflet.js', './icons/icon-192.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

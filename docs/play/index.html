@@ -276,6 +276,8 @@ body.inside #radar{top:calc(env(safe-area-inset-top) + 124px)}
 @keyframes tbounce{to{transform:translateY(-9px)}}@keyframes tbounce2{to{transform:translateY(9px)}}
 #tut{z-index:660!important;left:12px!important;right:12px!important;background:linear-gradient(#1a2416f6,#0c1009f8)!important;border:1px solid #9be15d!important;border-radius:16px!important;box-shadow:0 10px 30px #000c!important;line-height:1.45}
 .tth{display:flex;justify-content:space-between;font-size:10.5px;color:var(--acc);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
+.tlog{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px}
+.tlog b{font-style:normal}
 .tsub{margin-top:8px;padding:7px 10px;background:#9be15d1f;border:1px solid #9be15d44;border-radius:10px;color:#e8ffd0}
 #tut .tb{margin-top:8px}
 #map{filter:saturate(.22) brightness(.55) contrast(1.15) sepia(.18)!important}
@@ -396,7 +398,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.0.1";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, DAY = 360; let GRID = 5, RADIUS = 760;
 const $ = id => document.getElementById(id);
@@ -754,7 +756,24 @@ let sheetFn = null;
 function openSheet(html, fn) { $('sheet').innerHTML = html.replace('</h3>', '<button class="x" onclick="closeSheet()">✕</button></h3>'); $('sheet').classList.add('open'); sheetFn = fn || null; }
 function closeSheet() { $('sheet').classList.remove('open'); sheetFn = null; }
 window.closeSheet = closeSheet;
-setInterval(() => { if (sheetFn && $('sheet').classList.contains('open') && !$('sheet').matches(':active')) { const st = $('sheet').scrollTop; sheetFn(); $('sheet').scrollTop = st; } }, 1500);
+function morph(a, b) {
+  if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
+  if (a.nodeType === 3) { if (a.data !== b.data) a.data = b.data; return; }
+  if (a.nodeName === 'CANVAS') { a.replaceWith(b); return; } // whoever draws it now holds the new one
+  for (const n of [...a.getAttributeNames()]) if (!b.hasAttribute(n)) a.removeAttribute(n);
+  for (const n of b.getAttributeNames()) if (a.getAttribute(n) !== b.getAttribute(n)) a.setAttribute(n, b.getAttribute(n));
+  const A = [...a.childNodes], B = [...b.childNodes];
+  B.forEach((c, i) => { if (A[i]) morph(A[i], c); else a.appendChild(c); });
+  for (let i = B.length; i < A.length; i++) A[i].remove();
+}
+function refreshSheet() {
+  const live = $('sheet'), fn = sheetFn, ghostEl = live.cloneNode(false); ghostEl.innerHTML = ''; ghostEl.style.visibility = 'hidden'; ghostEl.style.pointerEvents = 'none'; live.id = 'sheet-live'; live.parentNode.insertBefore(ghostEl, live);
+  let open = true;
+  try { fn(); open = ghostEl.classList.contains('open'); } finally { ghostEl.id = 'sheet-ghost'; live.id = 'sheet'; }
+  if (!open) live.classList.remove('open'); else { const vis = live.style.visibility; ghostEl.style.visibility = vis; ghostEl.style.pointerEvents = live.style.pointerEvents; const kids = [...ghostEl.childNodes], A = [...live.childNodes]; kids.forEach((c, i) => { if (A[i]) morph(A[i], c); else live.appendChild(c); }); for (let i = kids.length; i < A.length; i++) A[i].remove(); }
+  ghostEl.remove();
+}
+setInterval(() => { if (sheetFn && $('sheet').classList.contains('open') && !$('sheet').matches(':active')) refreshSheet(); }, 1500);
 const btn = (label, fn, dis) => `<button ${dis ? 'disabled' : ''} onclick="${fn}">${label}</button>`;
 
 function buildSheetOld() {
@@ -1261,21 +1280,22 @@ function loopBody(now) {
   drawRadar();
   requestAnimationFrame(loop);
 }
+const setT = (id, v) => { const e = $(id), t = String(v); if (e.textContent !== t) e.textContent = t; };
 function hud() {
   renderAlerts(); renderRoster(); tutPos();
-  for (const k of Object.keys(RES)) $('r-' + k).textContent = Math.floor(S.res[k]);
-  $('r-pow').textContent = powerUse() + '/' + powerCap();
+  for (const k of Object.keys(RES)) setT('r-' + k, Math.floor(S.res[k]));
+  setT('r-pow', powerUse() + '/' + powerCap());
   $('r-pow').style.color = powerUse() > powerCap() ? 'var(--red)' : '';
-  $('r-surv').textContent = S.surv;
+  setT('r-surv', S.surv);
   { const C = S.camp, worst = Math.min(C.hyg, C.hp, C.mor);
-    $('camp').textContent = (C.sick ? '🤒' : worst < 25 ? '😫' : worst < 50 ? '😟' : '🙂') + ' ' + Math.round(worst) + '%';
+    setT('camp', (C.sick ? '🤒' : worst < 25 ? '😫' : worst < 50 ? '😟' : '🙂') + ' ' + Math.round(worst) + '%');
     $('camp').style.color = worst < 30 ? 'var(--red)' : worst < 50 ? 'var(--amb)' : '';
     $('b-surv').classList.toggle('warn', worst < 30 || S.res.water < 5);
-    $('sea').textContent = SEASONS[season()][0] + WX[C.wx][0] + ' D' + dayNo(); }
+    setT('sea', SEASONS[season()][0] + WX[C.wx][0] + ' D' + dayNo()); }
   { const ph = phaseInfo();
-    $('ph-ic').textContent = ph.night ? '🌙' : '☀️';
-    $('ph-t').textContent = ph.night ? `NIGHT ${Math.max(1, S.wave - 1)} · SIEGE` : `DAY ${dayNo()}`;
-    $('ph-s').textContent = ph.night ? `Dawn in ${mmss(ph.left)} · ☠ ${zombies.length} · wall ${Math.round(wallPct() * 100)}%` : `${S.exp ? '🎒 Scavengers out · ' : ''}Dusk in ${mmss(ph.left)}`;
+    setT('ph-ic', ph.night ? '🌙' : '☀️');
+    setT('ph-t', ph.night ? `NIGHT ${Math.max(1, S.wave - 1)} · SIEGE` : `DAY ${dayNo()}`);
+    setT('ph-s', ph.night ? `Dawn in ${mmss(ph.left)} · ☠ ${zombies.length} · wall ${Math.round(wallPct() * 100)}%` : `${S.exp ? '🎒 Scavengers out · ' : ''}Dusk in ${mmss(ph.left)}`);
     $('ph-bar').firstElementChild.style.width = ph.frac * 100 + '%';
     $('top').classList.toggle('night', ph.night);
     $('v-hq').firstElementChild.style.width = Math.max(0, S.hp / maxHp() * 100) + '%';
@@ -3075,7 +3095,7 @@ function moreSheet() {
     ${tile('🎯', 'Center', "closeSheet();map.setView([S.lat,S.lon],17)", 'Map')}
     ${tile(AU.on ? '🔊' : '🔇', 'Sound', 'soundSheet()', AU.on ? 'Levels' : 'Muted')}
     ${tile('📖', 'How it works', 'guideSheet()', 'Explained')}
-    ${tile('🎓', 'Tutorial', 'S.tut=0;tutRender();closeSheet()', 'Replay')}
+    ${tile('📓', 'Field log', 'S.tut=0;tutRender();closeSheet()', 'Read again')}
     ${tile('🗺️', 'Territory', 'territorySheet()', plotList(null, false).length + ' outposts')}
     ${tile('📁', 'Case 0047', 'caseSheet()', ((S.case || {}).n || 0) + '/' + CASE.length + ' evidence')}
     ${tile('ℹ️', 'About', 'aboutSheet()', 'Updates · website')}
@@ -7422,22 +7442,23 @@ const sheetOpen = () => $('sheet').classList.contains('open');
 function buildFlow(type, label) {
   return {
     tg: () => buildMode && buildMode !== type ? q$('#mode .gb button:last-child') : buildMode === type ? (ghost && ghost.ok ? q$('#mode .gb button.on') : null) : sheetOpen() && q$('.bgrid') ? q$(`.bcard[onclick*="'${type}'"]`) : $('b-build'),
-    sub: () => buildMode && buildMode !== type ? 'Tap <b>✕</b> to stop placing the last item.' : buildMode === type ? (ghost && ghost.ok ? 'Tap <b>✔ Place</b> to confirm.' : 'Tap the map <b>inside your wall</b> to preview a spot. Green means it fits.') : sheetOpen() && q$('.bgrid') ? `Tap the <b>${label}</b> card.` : 'Tap <b>Build</b>.',
+    sub: () => buildMode && buildMode !== type ? 'Finish up with the last job first: <b>✕</b>.' : buildMode === type ? (ghost && ghost.ok ? 'That spot works. <b>✔ Place</b> it.' : 'Pick a spot on the map, <b>inside the wall</b>. Green means it fits.') : sheetOpen() && q$('.bgrid') ? `Plans are under <b>${label}</b>.` : 'Start at <b>Build</b>.',
   };
 }
 const TUT = [
-  { t: 'This is your <b>HQ</b>, the real building at your address. By day the streets are quiet. At <b>night</b> the infected besiege your walls. This clock shows how long until dusk.', tg: () => $('phase') },
-  { t: 'Your compound is ringed by a <b>wall</b>. Let\'s look at it.', tg: () => sheetOpen() && !q$('#wallcv') ? q$('#sheet .x') : $('b-walls'), sub: () => sheetOpen() && !q$('#wallcv') ? 'Close this panel first (✕).' : 'Tap <b>Walls</b>.', wait: () => !!q$('#wallcv') },
-  { t: 'Each ring segment is one wall section. Green is solid, red is about to break. Your <b>wall crew</b> patches the weakest sections with 🔩 scrap, quickly by day and slowly at night.', tg: () => q$('#wallcv') || $('b-walls') },
-  { t: 'Now a gun. You\'ll place a <b>MG Turret</b> inside the wall.', ...buildFlow('mg', 'MG Turret'), wait: () => S.towers.some(t => t.type === 'mg') },
-  { t: 'Your crew is building it now (watch the scaffolding). Next, <b>water</b>: people drink every minute. A <b>Well pump</b> inside the wall feeds the HQ with no pipes.', ...buildFlow('well', 'Well pump'), wait: () => S.towers.some(t => t.type === 'well') },
-  { t: 'Let\'s meet your people.', tg: () => sheetOpen() && !q$('.tabs') ? q$('#sheet .x') : $('b-surv'), sub: () => sheetOpen() && !q$('.tabs') ? 'Close this panel first (✕).' : 'Tap <b>People</b>.', wait: () => !!q$('.tabs') },
-  { t: 'Open <b>📜 Rules</b>. These run the camp for you: what to do about bites, newcomers, rationing and ammo.', tg: () => q$('.tabs button[onclick*="rules"]'), wait: () => survSel === 'rules' && sheetOpen() },
-  { t: 'Good defaults are already set. Change them whenever you like. Other tabs: <b>Jobs</b> assigns work, <b>People</b> lists everyone (tap 💬 to talk to them).', tg: () => q$('.tabs') },
-  { t: '<b>Drones</b> fly real streets to loot shops, and fetch whatever you are about to run out of.', tg: () => sheetOpen() && !q$('.chips button[onclick*="auto"]') ? q$('#sheet .x') : $('b-drones'), sub: () => sheetOpen() && !q$('.chips button[onclick*="auto"]') ? 'Close this panel first (✕).' : 'Tap <b>Drones</b>.', wait: () => !!q$('.chips button[onclick*="auto"]') },
-  { t: 'Each drone shows where it\'s headed, its battery and its wear. Crashed drones are recovered by ground robots like <b>Sparky</b>.', tg: () => q$('#sheet h4') || $('b-drones') },
-  { t: 'When something needs you (low ammo, a bite, a breach), a <b>chip appears here</b>. Tap it to jump to the fix.', tg: () => ($('alerts').children.length ? $('alerts') : $('phase')), before: () => closeSheet() },
-  { t: 'Tap <b>HQ</b> any time to walk inside and watch the fight from the windows. Good luck. Survive the night.', tg: () => $('b-inside') },
+  { t: 'Day one. This building is what I\'ve got, so this is where I make my stand. Learned fast: the streets are almost calm by day. After dark they come for the walls. I watch this clock like my life depends on it, because it does.', tg: () => $('phase') },
+  { t: 'Walked the <b>wall</b> this morning. I want to know where it\'s weak before something else finds out.', tg: () => sheetOpen() && !q$('#wallcv') ? q$('#sheet .x') : $('b-walls'), sub: () => sheetOpen() && !q$('#wallcv') ? 'Close this panel first (✕).' : 'Go check <b>Walls</b>.', wait: () => !!q$('#wallcv') },
+  { t: 'Drew it out section by section. Green holds. Red won\'t last the night. The <b>wall crew</b> patches the worst spots with 🔩 scrap, quick in daylight and slow once it\'s dark.', tg: () => q$('#wallcv') || $('b-walls') },
+  { t: 'A wall only buys time. We need a gun on it. Decided on an <b>MG Turret</b>, inside the wall where a crew can reach it.', ...buildFlow('mg', 'MG Turret'), wait: () => S.towers.some(t => t.type === 'mg') },
+  { t: 'They\'re putting it up now, scaffold and all. Next worry is <b>water</b>. People go through it faster than I figured. A <b>Well pump</b> inside the wall reaches the HQ without any pipe.', ...buildFlow('well', 'Well pump'), wait: () => S.towers.some(t => t.type === 'well') },
+  { t: 'I should know who I\'m keeping alive. Time to learn some names.', tg: () => sheetOpen() && !q$('.tabs') ? q$('#sheet .x') : $('b-surv'), sub: () => sheetOpen() && !q$('.tabs') ? 'Close this panel first (✕).' : 'Go see <b>People</b>.', wait: () => !!q$('.tabs') },
+  { t: 'We sat down and wrote <b>📜 Rules</b>: what happens when someone\'s bitten, who gets let in, when we ration, how we spend ammo. Better to decide now than in the middle of it.', tg: () => q$('.tabs button[onclick*="rules"]'), wait: () => survSel === 'rules' && sheetOpen() },
+  { t: 'The rules seem sound for now. I can change them when I learn better. <b>Jobs</b> is who does what. Under <b>People</b> I can sit down with anyone (💬). They talk if you let them, and they remember what you say.', tg: () => q$('.tabs') },
+  { t: 'Got the <b>drones</b> flying. They follow the streets, raid shops and homes, and go after whatever we\'re short on. Nobody has to die for a can of beans.', tg: () => sheetOpen() && !q$('.chips button[onclick*="auto"]') ? q$('#sheet .x') : $('b-drones'), sub: () => sheetOpen() && !q$('.chips button[onclick*="auto"]') ? 'Close this panel first (✕).' : 'Go check <b>Drones</b>.', wait: () => !!q$('.chips button[onclick*="auto"]') },
+  { t: 'Each one has a heading, a battery and a lot of wear. Lost one already, and <b>Sparky</b>, our ground robot, dragged it home. Good robot.', tg: () => q$('#sheet h4') || $('b-drones') },
+  { t: 'Whatever the drones strip from houses, the <b>Workbench</b> (under More) can turn into armor and weapons. Knee pads first. We only have plans for a few things, so I keep an eye out for more. People notice who goes without.', tg: () => $('phase'), before: () => closeSheet() },
+  { t: 'Trouble doesn\'t wait its turn. Low ammo, a bite, a breach: I started pinning <b>notes up here</b> so I can get straight to what needs me.', tg: () => ($('alerts').children.length ? $('alerts') : $('phase')) },
+  { t: 'Last thing for today. When it starts, I go inside the <b>HQ</b> and watch from the windows. That\'s everything I know so far. Sun\'s going down. If you\'re reading this, keep writing.', tg: () => $('b-inside') },
 ];
 // a dock button hidden under an open panel can't be tapped: point at the panel's close button instead
 function tgOf(s) { const el = s && s.tg && s.tg(); return el && el.closest && el.closest('#bot') && sheetOpen() ? { el: q$('#sheet .x'), cover: true } : { el, cover: false }; }
@@ -7448,7 +7469,7 @@ function tutRender() {
   if (s.before && !s.ran) { s.ran = true; s.before(); }
   $('tut').classList.remove('hide');
   const sub = subOf(s);
-  $('tut').innerHTML = `<div class="tth"><span>Survival guide</span><span>${S.tut + 1} / ${TUT.length}</span></div><div>${s.t}</div>${sub ? `<div class="tsub">👉 ${sub}</div>` : ''}<div class="tb"><button onclick="S.tut=99;tutRender()">Skip guide</button>${s.wait ? '' : '<button class="on" onclick="S.tut++;tutRender()">Next ›</button>'}</div>`;
+  $('tut').innerHTML = `<div class="tth"><span>Field log</span><span>Page ${S.tut + 1} of ${TUT.length}</span></div><div class="tlog">${s.t}</div>${sub ? `<div class="tsub">✎ ${sub}</div>` : ''}<div class="tb"><button onclick="S.tut=99;tutRender()">Close the log</button>${s.wait ? '' : '<button class="on" onclick="S.tut++;tutRender()">Turn the page ›</button>'}</div>`;
   $('tut').dataset.sub = sub;
   tutPos();
 }
@@ -7463,11 +7484,10 @@ function tutPos() {
   if (el.closest('#sheet')) { const sr = $('sheet').getBoundingClientRect(), r0 = el.getBoundingClientRect(); if (r0.top < sr.top + 56 || r0.bottom > sr.bottom - 8) el.scrollIntoView({ block: 'center' }); }
   const r = el.getBoundingClientRect(), pad = 6;
   sp.classList.remove('hide');
-  Object.assign(sp.style, { left: r.left - pad + 'px', top: r.top - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' });
+  const box = [r.left - pad, r.top - pad, r.width + pad * 2, r.height + pad * 2].map(Math.round), bk = box.join(); if (sp.dataset.box !== bk) { sp.dataset.box = bk; Object.assign(sp.style, { left: box[0] + 'px', top: box[1] + 'px', width: box[2] + 'px', height: box[3] + 'px' }); }
   sp.classList.toggle('below', r.top < 120);
   const lower = r.top + r.height / 2 > innerHeight * .5;
-  $('tut').style.top = lower ? `calc(env(safe-area-inset-top) + 130px)` : 'auto';
-  $('tut').style.bottom = lower ? 'auto' : `calc(env(safe-area-inset-bottom) + 100px)`;
+  if ($('tut').dataset.low !== String(lower)) { $('tut').dataset.low = lower; $('tut').style.top = lower ? `calc(env(safe-area-inset-top) + 130px)` : 'auto'; $('tut').style.bottom = lower ? 'auto' : `calc(env(safe-area-inset-bottom) + 100px)`; }
 }
 function tutCheck() { tutPos(); }
 
