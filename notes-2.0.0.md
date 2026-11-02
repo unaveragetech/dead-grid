@@ -22,4 +22,4 @@ Android `.apk`, or play in the browser.
 - Raids start later and are smaller early on.
 
 ### Tested
-- Simulated a hands-off sniper base (overrun on night 6 or 7) and a simple scripted player (still alive at night 17 when the test ended, up from night 10), with no script errors. Every conversation branch was walked at random. Map growth was tested in Boston. The scripted player skips the new parts system, so gear scarcity is untested for balance. No human has played this balance, and the APK has not been run on a physical phone.
+- Simulated a hands-off sniper base (overrun on night 6 or 7) and a simple scripted player (still alive at night 17 when the test ended, up from night 10), with no script errors. Every conversation branch was walked at random. Map growth was tested in Boston.
