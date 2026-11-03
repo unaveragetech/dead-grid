@@ -165,6 +165,7 @@ button.on{background:var(--grime),linear-gradient(#c2c95a,#7f8a2c)!important;col
 #tr-snd{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 28px);transform:translateX(-50%);background:#000a;border-color:#9be15d88}
 #tr-cap{position:absolute;left:0;right:0;top:40%;text-align:center;font:italic 22px Georgia,serif;color:#e8e2d0;text-shadow:0 2px 10px #000;pointer-events:none;animation:trc 2.6s ease both}
 @keyframes trc{0%{opacity:0}20%{opacity:1}75%{opacity:1}100%{opacity:0}}
+#diffbox{margin:10px 0 6px}#diffbox .dtitle{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);margin-bottom:6px}#diffbox .dchips{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}#diffbox .dchips button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px;font-size:10.5px;line-height:1.15;min-height:58px}#diffbox .dchips button b{font-size:18px}#diffbox .dchips button.on{outline:2px solid var(--acc)}#diffbox .ddesc{font-size:12.5px;color:var(--dim);margin:7px 2px 0;min-height:48px}#diffbox .ddesc b{color:var(--txt)}
 #start .srow{display:flex;gap:8px;margin-top:8px}#start .srow button{flex:1;font-size:13px}
 #upd-banner{margin-top:10px;padding:10px;border:1px solid #9be15d88;border-radius:10px;background:#1a2414;color:#d8f0c0;font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #upd-banner.hide{display:none}#upd-banner button{padding:5px 10px;font-size:12px}
@@ -280,7 +281,11 @@ body.inside #radar{top:calc(env(safe-area-inset-top) + 124px)}
 .tlog b{font-style:normal}
 .tsub{margin-top:8px;padding:7px 10px;background:#9be15d1f;border:1px solid #9be15d44;border-radius:10px;color:#e8ffd0}
 #tut .tb{margin-top:8px}
-#map{filter:saturate(.22) brightness(.55) contrast(1.15) sepia(.18)!important}
+#map{filter:saturate(.5) brightness(.68) contrast(1.12) sepia(.1)!important}
+#map,#fx{will-change:transform;backface-visibility:hidden}
+#haze{position:absolute;inset:0;z-index:402;pointer-events:none;--fog:0;--gold:0;background:linear-gradient(to bottom,rgba(150,158,162,calc(var(--fog) * 1.35)) 0%,rgba(140,150,156,calc(var(--fog) * 1.1)) 12%,rgba(140,150,156,calc(var(--fog) * .4)) 26%,rgba(140,150,156,0) 44%),linear-gradient(to bottom,rgba(255,170,80,calc(var(--gold) * .18)),rgba(255,140,60,calc(var(--gold) * .1)));mix-blend-mode:normal}
+#haze.night{background:linear-gradient(to bottom,rgba(10,14,24,calc(var(--fog) * 1.35)) 0%,rgba(14,20,32,calc(var(--fog) * 1.1)) 12%,rgba(18,24,38,calc(var(--fog) * .4)) 26%,rgba(18,24,38,0) 46%),linear-gradient(rgba(30,50,110,.16),rgba(30,50,110,.16))}
+#b-cam.side{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom) + 266px);z-index:520;width:44px;height:44px;border-radius:50%;font-size:20px}
 #grade{position:absolute;inset:0;z-index:403;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,transparent 38%,rgba(4,5,3,.68) 100%)}
 #grade::after{content:'';position:absolute;inset:-50%;background-image:var(--grain);opacity:.08;animation:grain .5s steps(4) infinite}
 @keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(-5%,3%)}50%{transform:translate(4%,-4%)}75%{transform:translate(-3%,-2%)}}
@@ -326,6 +331,7 @@ body.inside #roster{display:none}
 <div id="night"></div>
 <div id="grade"></div>
 <canvas id="fx"></canvas>
+<div id="haze"></div>
 <canvas id="iv" class="hide"></canvas>
 <canvas id="intro" class="hide"></canvas>
 <div id="intro-ui" class="hide"><div id="intro-cap"></div><button id="intro-skip" onclick="event.stopPropagation();skipIntro()">Skip ▸</button></div>
@@ -370,6 +376,7 @@ body.inside #roster{display:none}
   <button id="b-more" class="dk" style="--g:#c4c9cc"><b>☰</b><span>More</span></button>
 </div>
 <button id="b-radio" class="fab side hide">📻</button>
+<button id="b-cam" class="fab side hide" onclick="camCycle()" title="Tilt the camera">🎥</button>
 
 <div id="spd" class="hide"><button data-v="0" onclick="setSpeed(0)">⏸</button><button data-v="1" class="on" onclick="setSpeed(1)">1×</button><button data-v="2" onclick="setSpeed(2)">2×</button><button data-v="4" onclick="setSpeed(4)">4×</button></div>
 <div id="sheet"></div>
@@ -381,6 +388,7 @@ body.inside #roster{display:none}
   <p>The outbreak starts at the edge of your map. Your neighborhood is real: streets and buildings from OpenStreetMap, population from the US Census. Fortify your stronghold, send drones to scavenge, build combat robots, raid military sites for heavy weapons, and take back the grid block by block.</p>
   <div id="addrbox"><input id="addr" placeholder="Start typing a real address, e.g. 350 5th Ave, New York NY" autocomplete="off"><div id="sugg"></div></div>
   <div id="pick" class="hide"><iframe id="gmap" title="Location preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><div id="pick-txt"></div><a id="gm-link" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>
+  <div id="diffbox"></div>
   <button id="go" class="on">Fortify this address</button>
   <button id="gps">📍 Use my current location</button>
   <button id="cont" class="hide">Continue saved stronghold</button>
@@ -398,7 +406,7 @@ body.inside #roster{display:none}
 
 <script>
 'use strict';
-const APP_VERSION = "2.0.1";
+const APP_VERSION = "2.1.0";
 const SAVE = 'deadgrid.save.v2';
 const CELL = 125, DAY = 360; let GRID = 5, RADIUS = 760;
 const $ = id => document.getElementById(id);
@@ -654,7 +662,7 @@ async function begin(st) {
   if (intro) await intro;
   S.f.introSeen = true; $('loading').classList.add('hide');
   buildRoadGraph(); syncPeople(); computeWallShape(); initRivals(); initContacts(); S.people.forEach(p => { if (p.mission && !(S.missions || []).some(m => m.id === p.mission && m.st !== 'done')) { p.mission = null; p.out = false; } });
-  ['top', 'bot', 'obj', 'radar', 'noise', 'b-radio', 'roster', 'spd'].forEach(id => $(id).classList.remove('hide'));
+  ['top', 'bot', 'obj', 'radar', 'noise', 'b-radio', 'b-cam', 'roster', 'spd'].forEach(id => $(id).classList.remove('hide'));
   initMap();
   for (let k = 0; k < 1 + S.up.bay; k++) addDrone();
   const c = S.census;
@@ -1117,7 +1125,7 @@ const dmgMul = () => 1 + .2 * S.up.work + .03 * S.camp.jobs.guard + .06 * (S.up.
 function towerThink(t, dt, overload) {
   const d = TOWERS[t.type]; if (!d.rate || (t.bp ?? 1) < 1) return;
   t.cd -= dt;
-  const range = d.range * (1 + .1 * (t.lvl - 1)) * (S.camp.wx === 'fog' ? .75 : 1);
+  const range = d.range * (1 + .1 * (t.lvl - 1)) * (S.camp.wx === 'fog' ? .75 : 1) * rangeMul(t);
   let z = null, bd = range;
   for (const o of zombies) { const dd = dist(o, t); if (dd < bd && !(d.min && dd < d.min)) { bd = dd; z = o; } }
   if (!z) { t.ang = (t.ang || 0) + dt * .4; return; }
@@ -1129,7 +1137,7 @@ function towerThink(t, dt, overload) {
   { const hr = t.hp / (d.hp * lvlMul(t)); if (hr < .4 && Math.random() < (.4 - hr) * 1.5) { t.cd = d.rate * 2; if (!t.jamT || performance.now() - t.jamT > 5000) { t.jamT = performance.now(); fx.push({ k: 'txt', x: t.x, y: t.y, s: 'JAM', t: 1 }); } return; } }
   if (d.ammo && S.res.ammo < d.ammo) { if (!S.dryWarn || S.t - S.dryWarn > 20) { S.dryWarn = S.t; toast('⚠️ Out of ammo: guns falling silent. Press rounds in the Armory.'); } return; }
   if (d.fuel && S.res.fuel < d.fuel) return;
-  if (d.ammo) S.res.ammo -= d.ammo;
+  if (d.ammo) S.res.ammo -= d.ammo * ammoMul(t);
   if (d.fuel) S.res.fuel -= d.fuel;
   let dmg = d.dmg * lvlMul(t) * dmgMul();
   if (isNight() && S.towers.some(l => l.type === 'light' && dist(l, t) < TOWERS.light.range)) dmg *= 1.4;
@@ -1327,7 +1335,7 @@ function draw() {
     ctx.strokeStyle = c.c ? 'rgba(155,225,93,.55)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.strokeRect(x, y, s, s);
   }
   if (map.getZoom() >= 16) {
-    const z = map.getZoom(), lift = k * .55, nt = isNight();
+    const z = map.getZoom(), lift = k * LIFTK, nt = isNight();
     for (const b of buildings) drawBld(ctx, b, P, k, lift, z, nt, false);
     if (hqB) drawBld(ctx, hqB, P, k, lift, z, nt, true);
     drawTrees(ctx, P, k, W, H, nt);
@@ -1346,12 +1354,12 @@ function draw() {
     ctx.fillStyle = '#ddd'; ctx.font = '10px system-ui'; ctx.fillText(s.name.slice(0, 22), x, y + 28);
   }
   for (const f of fx) if (f.k === 'blood') { const [x, y] = P(f.x, f.y); ctx.fillStyle = `rgba(120,0,0,${f.t / 2.5})`; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); }
-  if (S.pin) { const q = toXY(S.pin.lat, S.pin.lon), [x, y] = P(q.x, q.y); ctx.save(); ctx.translate(x - 15, y - 42 - (hqB ? (hqB.h + hqB.ridge) * k * .55 : 0)); ctx.shadowColor = '#0009'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3; ctx.scale(30 / 28, 42 / 40); ctx.fillStyle = '#EA4335'; ctx.fill(PIN_PATH); ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#a52714'; ctx.lineWidth = 1.2; ctx.stroke(PIN_PATH); ctx.fillStyle = '#7a1a10'; ctx.beginPath(); ctx.arc(14, 14, 5, 0, 7); ctx.fill(); ctx.restore(); }
-  if (hqB && map.getZoom() >= 16) { if (!S.pin) { ctx.font = '18px system-ui'; ctx.fillText('🚩', o.x + 4, o.y - (hqB.h + hqB.ridge) * k * .55 - 12); } }
+  if (S.pin) { const q = toXY(S.pin.lat, S.pin.lon), [x, y] = P(q.x, q.y); ctx.save(); ctx.translate(x - 15, y - 42 - (hqB ? (hqB.h + hqB.ridge) * k * LIFTK : 0)); ctx.shadowColor = '#0009'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 3; ctx.scale(30 / 28, 42 / 40); ctx.fillStyle = '#EA4335'; ctx.fill(PIN_PATH); ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#a52714'; ctx.lineWidth = 1.2; ctx.stroke(PIN_PATH); ctx.fillStyle = '#7a1a10'; ctx.beginPath(); ctx.arc(14, 14, 5, 0, 7); ctx.fill(); ctx.restore(); }
+  if (hqB && map.getZoom() >= 16) { if (!S.pin) { ctx.font = '18px system-ui'; ctx.fillText('🚩', o.x + 4, o.y - (hqB.h + hqB.ridge) * k * LIFTK - 12); } }
   else { const r = Math.max(10, 9 * k); ctx.fillStyle = '#2c4a20'; ctx.strokeStyle = '#9be15d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.rect(o.x - r, o.y - r, r * 2, r * 2); ctx.fill(); ctx.stroke(); ctx.font = `${r}px system-ui`; ctx.fillText('🏠', o.x, o.y); }
   const nowMs = performance.now(), night = isNight();
   drawRivals(ctx, P, k, nowMs);
-  drawWall(ctx, P, k, k * .55, nowMs);
+  drawWall(ctx, P, k, k * LIFTK, nowMs);
   drawOcc(ctx, P, k, nowMs); drawPlan(ctx, P, k, nowMs);
   drawPipes(ctx, P, k, nowMs);
   for (const t of S.towers) {
@@ -2005,14 +2013,14 @@ function drawBld(c, b, P, k, lift, z, night, hq) {
   if (mxx < 0 || mnx > innerWidth || mxy < 0 || mny - hh - 30 > innerHeight) return;
   const cl = cellAt(b), inf = cl && !cl.c ? cl.i / 100 : 0;
   // cast shadow (sun from the south-west)
-  c.fillStyle = 'rgba(0,0,0,.28)'; poly2(c, base.map(([x, y]) => [x + hh * .5, y - hh * .15])); c.fill(); poly2(c, base); c.fill();
+  c.fillStyle = `rgba(0,0,0,${SUN.a})`; const sh = hh / LIFTK * .55; poly2(c, base.map(([x, y]) => [x + sh * SUN.x, y + sh * SUN.y])); c.fill(); poly2(c, base); c.fill(); c.strokeStyle = 'rgba(0,0,0,.32)'; c.lineWidth = Math.max(1.5, .7 * k); c.stroke();
   const [ccx, ccy] = P(b.x, b.y), up = p => [p[0], p[1] - hh];
   for (let i = 0; i < base.length; i++) {
     const a = base[i], q = base[(i + 1) % base.length];
     let nx = q[1] - a[1], ny = -(q[0] - a[0]); const L = Math.hypot(nx, ny) || 1; nx /= L; ny /= L;
     if (((a[0] + q[0]) / 2 - ccx) * nx + ((a[1] + q[1]) / 2 - ccy) * ny < 0) { nx = -nx; ny = -ny; }
     if (ny <= .02) continue;
-    c.fillStyle = shadeHex(b.col, (night ? .32 : .62) + .28 * nx); poly2(c, [a, q, up(q), up(a)]); c.fill();
+    c.fillStyle = shadeHex(b.col, (night ? .32 : .6) + .3 * nx * SUN.lx + .06 * ny); poly2(c, [a, q, up(q), up(a)]); c.fill(); if (hh > 6) { const g = c.createLinearGradient(0, a[1], 0, a[1] - hh * .45); g.addColorStop(0, 'rgba(0,0,0,.28)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; poly2(c, [a, q, up(q), up(a)]); c.fill(); }
     if (z >= 18 && b.kind !== 'shed' && L > 10) {
       const wl = L / k, n = Math.floor(wl / 3.2), fl = Math.max(1, Math.round(b.h / 3));
       for (let f = 0; f < fl; f++) for (let m = 1; m <= n; m++) {
@@ -3761,8 +3769,8 @@ function drawOcc(c, P, k, now) {
   (S.occ || []).forEach((o, n) => {
     const b = buildings.find(x => bKey(x) === o.k); if (!b) return;
     c.strokeStyle = '#9be15d'; c.lineWidth = 2; poly2(c, b.poly.map(([x, y]) => P(x, y))); c.stroke();
-    const [x, y] = P(o.x, o.y), occ = S.people.filter(q => q.home === o.k), by = y - b.h * k * .55 - 16;
-    if (isNight() && occ.length) { c.fillStyle = 'rgba(255,200,110,.2)'; poly2(c, b.poly.map(([px, py]) => { const q = P(px, py); return [q[0], q[1] - b.h * k * .55]; })); c.fill(); }
+    const [x, y] = P(o.x, o.y), occ = S.people.filter(q => q.home === o.k), by = y - b.h * k * LIFTK - 16;
+    if (isNight() && occ.length) { c.fillStyle = 'rgba(255,200,110,.2)'; poly2(c, b.poly.map(([px, py]) => { const q = P(px, py); return [q[0], q[1] - b.h * k * LIFTK]; })); c.fill(); }
     const bw = 30 + Math.min(4, occ.length) * 9; c.fillStyle = 'rgba(14,17,12,.9)'; rr(c, x - bw / 2, by - 10, bw, 17, 8); c.fill(); c.strokeStyle = '#a3bf6e88'; c.lineWidth = 1; c.stroke();
     c.font = 'bold 10px system-ui'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = '#d8e8c0'; c.fillText(`🛏${occ.length}/${o.bunks}`, x - bw / 2 + 4, by - 1);
     occ.slice(0, 4).forEach((q, n) => { const hx = x - bw / 2 + 33 + n * 9; c.fillStyle = SKIN[q.look.sk || 0]; c.beginPath(); c.arc(hx, by - 1, 3.5, 0, 7); c.fill(); c.fillStyle = HAIR[q.look.hc || 0]; c.beginPath(); c.arc(hx, by - 2.5, 3.5, Math.PI, 0); c.fill(); });
@@ -3770,7 +3778,7 @@ function drawOcc(c, P, k, now) {
     const w = houseWater(o);
     if (w === 'pipe') { const n = [...WNET].sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))[0]; if (n) { const A = P(n.x, n.y), B = P(o.x, o.y); pipeSeg(c, A[0], A[1], B[0], B[1], Math.max(2, k * .8), true, now); } }
     if (w === 'bucket' && !isNight()) { const f = (Math.sin(now / 3000 + n) + 1) / 2; if (!tunnelLinked(o.k)) { const px = o.x * f, py = o.y * f, q = P(px, py); drawPersonTop(c, q[0], q[1], Math.max(2.5, .5 * k), { sh: 3, hc: 1 }, Math.atan2(o.y, o.x) + (Math.cos(now / 3000 + n) > 0 ? 0 : Math.PI), false); c.font = '10px system-ui'; c.fillText('🪣', q[0], q[1] - 9); } }
-    if (w === 'bucket') { c.font = '11px system-ui'; c.fillText('💧?', x + 14, y - b.h * k * .55 - 10); }
+    if (w === 'bucket') { c.font = '11px system-ui'; c.fillText('💧?', x + 14, y - b.h * k * LIFTK - 10); }
   });
 }
 
@@ -4908,7 +4916,7 @@ function voice(p, txt) {
   if (s.style === 'rambler' && Math.random() < .22) t += ' ' + pick(TANGENTS);
   if (s.style === 'wry' && Math.random() < .2) t += ' ' + pick(WRY);
   if (s.quirk === 'listen' && Math.random() < .5) t = 'Listen. ' + t;
-  if (s.quirk === 'honestly' && Math.random() < .5) t = t.replace(/\.( |$)/, ', honestly.$1');
+  if (s.quirk === 'honestly' && Math.random() < .2) t = t.replace(/\.( |$)/, ', honestly.$1');
   if (s.quirk === 'hums' && Math.random() < .25) t = '*hums something* ' + t;
   if (s.quirk === 'counts' && Math.random() < .3) t += ` That's ${S.kills} of them we've put down, by the way. I keep count.`;
   if (s.quirk === 'swears' && Math.random() < .4) t = t.replace(/\b(scared|tired|cold|done|stupid)\b/, '$1 as hell');
@@ -6538,7 +6546,7 @@ function gangAI(R) {
   if (scav < 2 && here.length > 3) pick(here).role = 'scav';
   if (gangStage(R) >= 2 && R.stock > 70 && R.camps.length < 4 && hostile) { R.stock -= 50; R.grow = 0; }
   // attack: they always want to, and judge the odds badly
-  if (!hostile || S.wave < 3 || (S.peace && S.peace['r' + R.id] > S.wave)) return;
+  if (!hostile || S.wave < DF().raidN || (S.peace && S.peace['r' + R.id] > S.wave)) return;
   R.war = (R.war ?? rnd(120, 240)) - 5 * (isNight() ? 1.6 : 1);
   if (R.war <= 0 && fighters(R).length >= 3) { R.war = rnd(280, 480) - Math.min(70, R.folk.length * 3); launchRaid(R); }
 }
@@ -6710,7 +6718,7 @@ zombieThink = (o => (z, dt) => {
 })(zombieThink);
 // anyone reached fights back with what they carry; guards use their gear at range
 function brawlTick(dt) {
-  for (const p of S.people) { if (p.out || p.inside || p.wx == null) continue; p.mcd = (p.mcd || 0) - dt; if (p.mcd > 0) continue; const z = zombies.find(q => Math.hypot(q.x - p.wx, q.y - p.wy) < 3.5 && !q.dead); if (!z) continue; if (Math.random() > .3 + skillOf(p, 'melee') * .1) { p.mcd = 1; speak(p, '😱'); continue; } const g = GEAR[p.gear || 'fists']; p.mcd = Math.max(.8, g.cd); hit(z, Math.max(g.d * .8, 3) * combatMul(p, false)); train(p, 'melee', .01); speak(p, g.i || '🤜'); fightFx(p.wx, p.wy, g.i || '🤜'); }
+  for (const p of S.people) { if (p.out || p.inside || p.wx == null) continue; p.mcd = (p.mcd || 0) - dt; if (p.mcd > 0) continue; const z = zombies.find(q => Math.hypot(q.x - p.wx, q.y - p.wy) < 3.5 && !q.dead); if (!z) continue; if (Math.random() > .3 + skillOf(p, 'melee') * .1) { p.mcd = 1; speak(p, '😱'); continue; } const g = GEAR[p.gear || 'fists']; p.mcd = Math.max(.8, g.cd); hit(z, Math.max(g.d * .8, 3) * combatMul(p, false) * milMul()); train(p, 'melee', .01); speak(p, g.i || '🤜'); fightFx(p.wx, p.wy, g.i || '🤜'); }
 }
 
 // ---------- 5. smarter gangs ----------
@@ -6764,7 +6772,7 @@ function seizeTick() { for (const [k, p] of Object.entries(S.plots || {})) if (p
 // ---------- 9. drawing: paint on buildings, smoke, forts ----------
 drawOcc = (o => (c, P, k, now) => {
   o(c, P, k, now);
-  if (map.getZoom() >= 16.4 && S.bs) for (const b of buildings) { if (!b.poly || b === hqB) continue; const [x, y] = P(b.x, b.y); if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue; const st = S.bs[bKey(b)], u = Math.max(4, k * 2.2), ly = y - b.h * k * .55;
+  if (map.getZoom() >= 16.4 && S.bs) for (const b of buildings) { if (!b.poly || b === hqB) continue; const [x, y] = P(b.x, b.y); if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue; const st = S.bs[bKey(b)], u = Math.max(4, k * 2.2), ly = y - b.h * k * LIFTK;
     if (!st) { c.fillStyle = 'rgba(155,225,93,.55)'; c.beginPath(); c.arc(x, ly, Math.max(1.5, u * .28), 0, 7); c.fill(); continue; }
     if (st.l < .15) { c.strokeStyle = 'rgba(210,50,30,.9)'; c.lineWidth = Math.max(1.5, u * .35); c.beginPath(); c.moveTo(x - u, ly - u); c.lineTo(x + u, ly + u); c.moveTo(x + u, ly - u); c.lineTo(x - u, ly + u); c.stroke(); }
     else { c.strokeStyle = 'rgba(230,190,50,.9)'; c.lineWidth = Math.max(1.5, u * .3); c.beginPath(); c.moveTo(x - u, ly + u * .7); c.lineTo(x + u, ly - u * .7); c.stroke(); } }
@@ -6833,7 +6841,7 @@ onDawn = (o => () => { o(); trainTick(); })(onDawn);
 
 // ---------- 4. standing orders ----------
 const ORD = { jobs: ['🧑‍💼', 'Foreman', 'Puts people on the jobs the camp needs, each on what they\'re best at'], gate: ['🚪', 'Gate discipline', 'Opens the gate at dawn, shuts it before dusk'], curfew: ['🏠', 'Siege curfew', 'During an attack, non-fighters get inside the HQ'], arms: ['⚔️', 'Call to arms', 'If the wall is breached, your best third of fighters drop their work and fight. The wounded fall back'], repair: ['🛠️', 'Repair crew', 'Pays scrap to repair badly damaged guns'], burn: ['🔥', 'Burn the dead', 'Burns corpses when they pile up (uses fuel)'], service: ['🛸', 'Drone service', 'Services worn drones with scrap'], pick: ['🧺', 'Harvest rota', 'Picks ripe beds nobody is tending'], meds: ['💊', 'Medical stock', 'Crafts medicine when it runs low and supplies allow'] };
-const ord = k => (S.orders ||= {})[k] !== false;
+const ord = k => { const v = (S.orders ||= {})[k]; return v === undefined ? !(typeof ORD_OFF !== 'undefined' && ORD_OFF.has(k)) : v !== false; };
 window.toggleOrd = k => { S.orders ||= {}; S.orders[k] = !ord(k); survSheet(); };
 rulesBody = (o => () => `<h4>Standing orders</h4><p class="explain">Turn these off only if you'd rather do it by hand.</p>${Object.entries(ORD).map(([k, [i, n, d]]) => `<div class="row"><div class="rl"><span class="ico" style="--c:#4a5a7a">${i}</span><div>${n}<small>${d}</small></div></div>${btn(ord(k) ? 'ON' : 'OFF', `toggleOrd('${k}')`)}</div>`).join('')}<h4>Camp rules</h4>${o()}`)(rulesBody);
 function foreman() {
@@ -7053,7 +7061,7 @@ async function growMap() {
   } catch (e) { console.error(e); roads = oldR; trees = oldT; greens = oldG; GRID = G0; RADIUS = R0; S.mapLv--; }
   growing = false;
 }
-function mapTick() { const L = S.mapLv || 0; if (!isNight() && L < MAP_AT.length && S.wave - 1 >= MAP_AT[L]) growMap(); }
+function mapTick() { const L = S.mapLv || 0; if (!isNight() && L < MAP_AT.length && S.wave - 1 >= MAP_AT[L] * DF().map) growMap(); }
 
 // ---------- gangs start as a few desperate people and have to earn a fortress ----------
 const G_KIND = {
@@ -7065,8 +7073,8 @@ const G_KIND = {
 };
 const gangKind = R => R.kind ||= pick(Object.keys(G_KIND));
 const heldN = () => Object.values(S.cells || {}).filter(c => c.c).length;
-const gangCap = R => Math.round(4 + (S.wave - 1) * .45 + S.people.length * .35 + heldN() * .25);
-const raidCap = R => Math.round(2 + (S.wave - 1) * .35 + S.people.length * .12);
+const gangCap = R => Math.round((4 + (S.wave - 1) * .45 + S.people.length * .35 + heldN() * .25) * DF().raid);
+const raidCap = R => Math.max(1, Math.round((2 + (S.wave - 1) * .35 + S.people.length * .12) * DF().raid));
 function gangStage(R) { const n = (R.folk || []).length, ni = S.wave - 1, st = n >= 13 && ni >= 16 ? 2 : n >= 7 && ni >= 6 ? 1 : 0; if (st > (R.stage || 0)) { R.stage = st; if (R.rel <= -30 || st === 2) world(R.i, st === 2 ? `${R.n} isn't a gang anymore. It's a settlement with walls, and people who were born to it soon.` : `${R.n} stopped drifting and dug in. They have a real camp now.`); } return R.stage || 0; }
 const STAGE_N = ['Drifting band', 'Settled camp', 'Established hold'];
 rivalSheet = (o => () => { o(); const list = (S.rivals || []).filter(R => !R.dead && R.folk); q$('#sheet').insertAdjacentHTML('beforeend', `<div style="padding:0 2px 12px"><h4>Who they are</h4>${list.map(R => { const K = G_KIND[gangKind(R)], c = { food: 12 + R.folk.length * 2 }; return `<div class="row"><div>${R.i} ${R.n}<small>${STAGE_N[gangStage(R)]} · ${R.folk.length} people${R.rel <= -30 ? ` · ${K[0]}: ${K[1]}` : ''}</small></div>${R.rel <= -30 && R.kind === 'desperate' ? btn('Send food ' + fmtCost(c), `feedGang(${R.id})`, !canPay(c)) : ''}</div>`; }).join('')}</div>`); })(rivalSheet);
@@ -7218,7 +7226,7 @@ function saidSet() { if (!SAID || SAID.s !== S) SAID = { s: S, h: new Set(S.said
 function markSaid(t) { const h = strHash(t), H = saidSet(); if (H.has(h)) return false; H.add(h); S.said.push(h); if (S.said.length > 6000) { H.delete(S.said.shift()); } return true; }
 function fresh(p, keys) { const c = vctx(p); let t = ''; for (let n = 0; n < 14; n++) { const pre = Math.random() < .55 ? pick(GR.opener) + ' ' : ''; t = cap1(gram(pre + `{${pick(keys)}}` + (Math.random() < .4 ? ' {closer}' : ''), c)); if (markSaid(t)) break; } return voice(p, t); }
 const OPEN_MAP = { small: ['m_miss', 'm_now', 'm_wit', 'm_ask', 'm_camp', 'm_work', 'm_dream'], vent: ['m_fear', 'm_now', 'm_dream'], joke: ['m_wit', 'm_camp'], question: ['m_ask', 'm_hope'], memory: ['m_miss', 'm_work', 'm_hope'] };
-openLine = (o => (p, k) => { if (OPEN_MAP[k] && Math.random() < .7) return fresh(p, OPEN_MAP[k]); const t = o(p, k); markSaid(t); return t; })(openLine);
+openLine = (o => (p, k) => { if (OPEN_MAP[k] && Math.random() < .15) return fresh(p, OPEN_MAP[k]); const t = o(p, k); markSaid(t); return t; })(openLine);
 react = (o => (p, k, a) => { const r = o(p, k, a); if (r && r.say && !markSaid(r.say)) { const c = vctx(p), key = r.trust > 0 ? 'r_good' : r.trust < 0 ? 'r_bad' : 'r_mid'; for (let n = 0; n < 8; n++) { const t = cap1(gram(`{${key}}`, c)); if (markSaid(t)) { r.say = voice(p, t); break; } } } return r; })(react);
 
 // ---------- what a choice does, now or later ----------
@@ -7362,7 +7370,7 @@ function bpCatHtml() { bpInit(); const all = BP_ALL(), got = all.filter(k => S.b
 function crewHtml() { gearTick(); const P = S.people, nA = P.filter(isArmed).length, nK = P.filter(p => Object.keys(p.kit || {}).length).length, ang = P.filter(p => p.kitMad > 0).length;
   return `<small style="color:var(--dim)">${nA} of ${P.length} armed · ${nK} with any armor${ang ? ` · <b style="color:var(--red)">${ang} resent going without</b>` : ''}. Guards get the best first. ⭐ moves someone to the front of the line.</small>${P.map(p => `<div class="row"><div>${fn(p)}<small>${GEAR[p.gear || 'fists'].i || '✊'} ${GEAR[p.gear || 'fists'].n}${Object.values(p.kit || {}).length ? ' · ' + Object.values(p.kit).map(k => ARMOR[k].n).join(', ') : ' · no armor'} · ${Math.round(armorOf(p) * 100)}% protected</small></div>${btn(p.kitFirst ? '⭐ First' : '☆', `kitFirst(${p.id})`)}</div>`).join('')}`; }
 function kitSheetHtml() { kitInit(); return benchTab === 'cat' ? bpCatHtml() : benchTab === 'crew' ? crewHtml() : benchHtml(); }
-function wearTick() { for (const k in S.arms) { if (!S.arms[k]) continue; const n = S.arms[k], ch = isFirearm(k) ? .012 : .03; for (let i = 0; i < n; i++) if (Math.random() < ch) { S.arms[k]--; world('💔', `A ${GEAR[k].n.toLowerCase()} broke beyond repair.`); } } for (const k in S.armor) for (let i = S.armor[k] | 0; i > 0; i--) if (Math.random() < .012) { S.armor[k]--; toast(`${ARMOR[k].i} A set of ${ARMOR[k].n.toLowerCase()} fell apart`); } }
+function wearTick() { for (const k in S.arms) { if (!S.arms[k]) continue; const n = S.arms[k], ch = (isFirearm(k) ? .012 : .03) * DF().wear; for (let i = 0; i < n; i++) if (Math.random() < ch) { S.arms[k]--; world('💔', `A ${GEAR[k].n.toLowerCase()} broke beyond repair.`); } } for (const k in S.armor) for (let i = S.armor[k] | 0; i > 0; i--) if (Math.random() < .012 * DF().wear) { S.armor[k]--; toast(`${ARMOR[k].i} A set of ${ARMOR[k].n.toLowerCase()} fell apart`); } }
 // people notice who got what
 moodlets = (o => p => { const L = o(p), others = S.people.filter(q => q !== p); if (others.length && p.kit) { const armed = others.filter(isArmed).length / others.length, cov = others.filter(q => Object.keys(q.kit || {}).length).length / others.length, mad = psyche(p).temper > .55;
     if (!isArmed(p) && armed > 0) L.push([p.role === 'guard' ? 'Sent to the wall with bare hands' : mad ? 'Others got weapons. I got nothing' : 'Everyone is armed but me', -Math.round((p.role === 'guard' ? 8 : 3) + armed * 7)]);
@@ -7374,6 +7382,351 @@ function kitTick() { kitInit(); bpTick(); if (S.t - (S.kitT ?? -99) < 30) return
 Object.assign(TREES, { nokit: { w: () => 0, a: [["{f} has a {gun} and I've got my hands. Do you know what it's like standing next to that when they come? Am I worth less than them?", "I counted. Everyone with armor, everyone with a gun. I'm not on that list. So tell me what I'm for here.", "I'm not angry. I'm just tired of being the one who gets sent out in a T-shirt. Okay, I'm a little angry."], [["You're next. Top of the list. (Moves them first)", 'y', { t: 8, m: 8, do: p => { p.kitFirst = true; p.kitMad = 0; gearTick(); } }], ["There isn't enough. I'm stripping every house I can.", 'n', {}], ["I give gear to who earns it.", null, { t: -12, m: -14, mem: 'You told me I hadn\'t earned protection', ml: ['Told I haven\'t earned it', -10, 900] }]]], y: [["Okay. I'll believe it when it's on me.", "That's all I wanted to hear. Don't make me ask again."], []], n: [["Then let me go look too. I'd rather find my own than wait.", "I know. I've seen the piles. It still feels how it feels."], [["Fair. Be careful out there.", null, { t: 5, m: 3, do: p => { p.kitMad = 4; } }], ["I need you here.", null, { t: -2, m: -3 }]]] } });
 worldTick = (o => () => { o(); kitTick(); })(worldTick);
 
+// ================= infrastructure: what buildings do, what ties them together, and a wall that takes them in =================
+Object.assign(USES, {
+  depot: ['🚚', 'Supply depot', 'Guns within 70 m use 30% less ammo, because runners keep them topped up. Needs someone who knows scavenging'],
+  radio: ['📡', 'Broadcast station', 'Calls survivors in from outside, and long guns within 90 m reach 20% farther with a spotter on the air. Needs power'],
+  police: ['🚓', 'Guard post', 'Guards nearby train faster, and now and then an armed stranger signs on'],
+  militia: ['✊', 'Militia hall', 'If the dead get inside the wall, everyone inside fights 60% harder'],
+});
+const USE_SK = { depot: 'scav', radio: 'charm', police: 'shoot', militia: 'lead' };
+const LONG_T = ['sniper', 'mortar', 'amr', 'harpoon', 'rocket', 'gl', 'cannon'];
+const occB = o => buildings.find(b => bKey(b) === o.k);
+// power: inside the wall the HQ grid reaches; outside you need a generator close by
+function powered(o) { if (powerUse() > powerCap()) return false; return insideWall(o) || S.towers.some(t => t.type === 'gen' && (t.bp ?? 1) >= 1 && dist(t, o) < 60); }
+function useOn(o, u) { return (o.use || 'bunks') === u && o.worker != null && S.people.some(q => q.id === o.worker) && (u !== 'radio' || powered(o)); }
+const activeUses = u => (S.occ || []).filter(o => useOn(o, u));
+function roofOf(t) { const k = Math.round(t.x) + ',' + Math.round(t.y); if (t.roofK === k) return t.roof; let h = 0; for (const b of buildings) if (Math.abs(b.x - t.x) < 30 && Math.abs(b.y - t.y) < 30 && b.h > h && Math.hypot(b.x - t.x, b.y - t.y) < 14 + Math.sqrt(b.area) / 2) h = b.h; t.roofK = k; t.roof = h; return h; }
+const roofBonus = h => h >= 15 ? .3 : h >= 9 ? .15 : 0;
+function rangeMul(t) { if (!LONG_T.includes(t.type)) return 1; let m = 1 + roofBonus(roofOf(t)); if (activeUses('radio').some(o => dist(o, t) < 90)) m += .2; return m; }
+const ammoMul = t => activeUses('depot').some(o => dist(o, t) < 70) ? .7 : 1;
+let MIL = { t: -9, on: false };
+const milMul = () => { if (S.t - MIL.t > 1) MIL = { t: S.t, on: activeUses('militia').length > 0 && zombies.some(z => !z.who && !z.flee && insideWall(z)) }; return MIL.on ? 1.6 : 1; };
+function infraTick() {
+  for (const o of S.occ || []) { const k = USE_SK[o.use]; if (!k) continue; let w = S.people.find(q => q.id === o.worker); if (!w || w.quar) { w = S.people.filter(q => !q.quar && !(S.occ || []).some(c => c.worker === q.id)).sort((a, b) => skillOf(b, k) - skillOf(a, k))[0]; o.worker = w ? w.id : null; } if (w) train(w, k, .01); }
+  if (activeUses('police').length) { for (const p of S.people) if (p.role === 'guard') train(p, 'shoot', .015); if (S.t - (S.copT ?? S.t - 200) > DAY * 1.3 && S.surv < survCap() && !isNight()) { S.copT = S.t; S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { p.bio = 'police officer'; (S.arms ||= {}).pistol = (S.arms.pistol || 0) + 1; learnBp('pistol', 'a cop who signed on at the guard post', true); world('🚓', `${p.name}, an off-duty cop, walked up to the guard post with a pistol and asked to sign on.`); } } }
+  const R = activeUses('radio'); if (R.length && !isNight() && S.surv < survCap() - 1 && Math.random() < .0016 * R.length) { S.surv++; syncPeople(); const p = S.people[S.people.length - 1]; if (p) { identity(p); p.bio ??= pick(BIOS); lifeOf(p); skillsOf(p); world('📡', `${p.name} heard the broadcast and walked in from ${pick(['the river', 'the interstate', 'two towns over', 'the hospital', 'a basement across the street'])}.`); noise(0, 0, 70, 2); } }
+}
+
+// ---------- the wall takes in the buildings you use ----------
+const wallSet = k => { const W = S.wall; W.inc ||= []; W.exc ||= []; return W; };
+function wrapTargets() { const W = wallSet(); if (W.wrap === false) return []; const keys = new Set([...(S.occ || []).map(o => o.k), ...(S.forts || []).map(f => f.k), ...W.inc]); W.exc.forEach(k => keys.delete(k)); const B = wallBase();
+  if (W.hug !== false) for (const b of buildings) if (b.poly && b.kind !== 'shed' && !W.exc.includes(bKey(b))) { const d = Math.hypot(b.x, b.y); if (d > B - 12 && d < B + 14) keys.add(bKey(b)); }
+  return [...keys].map(k => buildings.find(b => bKey(b) === k)).filter(Boolean); }
+const wrapReach = () => wallBase() + 60 + 10 * (S.wall.ring || 0);
+function wrapWall() { const lim = wrapReach(), T = wrapTargets(), keep = new Set(T); S.wall.far = [];
+  const other = buildings.filter(b => b.poly && !keep.has(b) && Math.hypot(b.x, b.y) < lim + 30);
+  for (const b of T) { const pts = b.poly.concat([[b.x, b.y]]), near = Math.min(...pts.map(([x, y]) => Math.hypot(x, y))); if (near > lim) { S.wall.far.push(bKey(b)); continue; }
+    for (const [x, y] of pts) { const a = (Math.atan2(y, x) + Math.PI * 2) % (Math.PI * 2), r = Math.hypot(x, y) + 5, i = Math.floor(a / SEG_A) % WALL_SEGS, j = (i + 1) % WALL_SEGS, t = a / SEG_A - Math.floor(a / SEG_A), need = r / Math.max(.6, Math.cos(SEG_A * Math.min(t, 1 - t)));
+      WALLV[i] = Math.max(WALLV[i], need); WALLV[j] = Math.max(WALLV[j], need); } }
+  for (let pass = 0; pass < 3; pass++) for (let i = 0; i < WALL_SEGS; i++) { const a = WALLV[(i + WALL_SEGS - 1) % WALL_SEGS], c = WALLV[(i + 1) % WALL_SEGS]; WALLV[i] = Math.max(WALLV[i], (a + c) / 2 - 7); }
+  // don't run the new line straight through a house you didn't ask for
+  for (let i = 0; i < WALL_SEGS; i++) { const a = i * SEG_A; for (let n = 0; n < 12 && other.some(b => inPoly(Math.cos(a) * WALLV[i], Math.sin(a) * WALLV[i], b.poly)); n++) WALLV[i] += 1.5; }
+  S.wall.rad = WALLV.slice(); }
+computeWallShape = (o => force => { const prev = S.wall.rad && S.wall.rad.slice(); o(force); if (!force) return; wrapWall();
+  if (prev && prev.length === WALL_SEGS) { let n = 0; WALLV.forEach((r, i) => { if (Math.abs(r - prev[i]) > 2) { n++; S.wall.segs[i] = Math.min(S.wall.segs[i], segMax() * .5); } }); if (n && S.t > 5) toast(`🧱 The wall line moved on ${n} section${n > 1 ? 's' : ''}. The crew is building them out.`); } })(computeWallShape);
+window.wallIn = (k, on) => { const W = wallSet(); W.inc = W.inc.filter(q => q !== k); W.exc = W.exc.filter(q => q !== k); (on ? W.inc : W.exc).push(k); computeWallShape(true); const b = buildings.find(x => bKey(x) === k); if (b) bldSheet(b); };
+window.wallOpt = (f) => { const W = wallSet(); W[f] = W[f] === false; computeWallShape(true); wallSheet(); };
+window.occupy = (o => k => { o(k); computeWallShape(true); })(window.occupy);
+window.fortify = (o => k => { o(k); computeWallShape(true); })(window.fortify);
+wallSheet = (o => () => { o(); const W = wallSet(), T = wrapTargets(); q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row" style="display:block"><b>📐 What the wall takes in</b><small>${T.length - (W.far || []).length} building${T.length === 1 ? '' : 's'} pulled inside the line.${(W.far || []).length ? ` <b style="color:var(--amb)">${W.far.length} too far out.</b> Push the perimeter out to reach them.` : ''} Moved sections start half built.</small><div class="chips"><button class="${W.wrap !== false ? 'on' : ''}" onclick="wallOpt('wrap')">Wrap the buildings we use</button><button class="${W.hug !== false ? 'on' : ''}" onclick="wallOpt('hug')">Take in houses on the line</button></div></div>`); })(wallSheet);
+
+// ---------- a building's card says what it's connected to ----------
+function links(b) { const k = bKey(b), o = (S.occ || []).find(q => q.k === k), W = wallSet(), inW = insideWall(b), f = (S.forts || []).find(q => q.k === k), L = [];
+  L.push(inW ? ['🧱', 'Inside the wall', 1] : (W.far || []).includes(k) ? ['🧱', 'Outside the wall, and too far to wall in yet', 0] : ['🧱', 'Outside the wall', 0]);
+  if (o) { const w = houseWater(o); L.push(w === 'bucket' ? ['🪣', tunnelLinked(k) ? 'Water by bucket, through the tunnel' : 'Water by bucket, over open ground', 0] : ['💧', w === 'pipe' ? 'Piped water' : 'Water from the HQ', 1]); L.push(powered(o) ? ['⚡', insideWall(o) ? 'Powered from the HQ grid' : 'Powered by a nearby generator', 1] : ['⚡', powerUse() > powerCap() ? 'No power: the grid is overloaded' : 'No power. Wall it in or build a generator within 60 m', 0]); if (tunnelLinked(k)) L.push(['🕳️', 'Tunnel to the HQ', 1]); const u = o.use || 'bunks', w2 = o.worker != null && S.people.find(q => q.id === o.worker); if (USE_SK[u]) L.push([USES[u][0], useOn(o, u) ? `${USES[u][1]} running · ${fn(w2)}` : u === 'radio' && w2 ? 'Broadcast station is dark: it needs power' : `${USES[u][1]} has nobody to run it`, useOn(o, u) ? 1 : 0]); }
+  if (f) L.push(['🏰', `Garrisoned · ${Math.round(f.hp)}/${Math.round(f.max)}`, 1]);
+  if (b.h >= 9) L.push(['🏙️', `${Math.round(b.h)} m tall: long guns placed beside it reach ${Math.round(roofBonus(b.h) * 100)}% farther`, 1]);
+  const near = activeUses('radio').some(q => dist(q, b) < 90) ? ['📡', 'In broadcast range', 1] : null; if (near) L.push(near);
+  return L; }
+bldSheet = (o => b => { o(b); const k = bKey(b), W = wallSet(), forced = W.inc.includes(k), out = W.exc.includes(k), L = links(b);
+  q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row" style="display:block"><b>Connections</b>${L.map(([i, t, ok]) => `<small style="color:${ok ? 'var(--acc)' : 'var(--amb)'}">${i} ${t}</small>`).join('')}<div class="chips">${insideWall(b) && !forced ? (out ? '' : `<button onclick="wallIn('${k}',false)">Leave it outside the wall</button>`) : `<button class="${forced ? 'on' : ''}" onclick="wallIn('${k}',true)">🧱 ${forced ? 'Walled in' : 'Wall it in'}</button>`}${out ? `<button onclick="wallIn('${k}',true)">Take it back inside</button>` : ''}</div></div>`); })(bldSheet);
+// on the map: a strip of status icons, and lines showing how each place is supplied
+drawOcc = (o => (c, P, k, now) => { o(c, P, k, now); const z = map.getZoom(); if (z < 15.5) return;
+  const hq = P(0, 0);
+  for (const q of S.occ || []) { const b = occB(q); if (!b) continue; const [x, y] = P(q.x, q.y), inW = insideWall(q), w = houseWater(q), pw = powered(q);
+    if (!inW && !tunnelLinked(q.k)) { c.save(); c.strokeStyle = w === 'pipe' ? 'rgba(90,170,255,.55)' : 'rgba(255,180,70,.6)'; c.lineWidth = 2; c.setLineDash([5, 6]); c.lineDashOffset = -now / 60; c.beginPath(); c.moveTo(hq[0], hq[1]); c.lineTo(x, y); c.stroke(); c.restore(); if (w === 'bucket') { const t = (now / 4000 + q.x * .01) % 1; c.font = '10px system-ui'; c.textAlign = 'center'; c.fillText('🪣', hq[0] + (x - hq[0]) * t, hq[1] + (y - hq[1]) * t); } }
+    if (pw && !inW) { const g = S.towers.filter(t => t.type === 'gen').sort((a, b2) => dist(a, q) - dist(b2, q))[0]; if (g) { const [gx, gy] = P(g.x, g.y); c.strokeStyle = 'rgba(255,230,90,.7)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(gx, gy); const n = 6; for (let i = 1; i <= n; i++) { const f = i / n, ox = i < n ? (i % 2 ? 3 : -3) : 0; c.lineTo(gx + (x - gx) * f + ox, gy + (y - gy) * f - ox); } c.stroke(); } }
+    const u = q.use || 'bunks', icons = [USES[u][0], inW ? '🧱' : '⚠️', w === 'bucket' ? '🪣' : '💧', pw ? '⚡' : '🔌'], by = y - b.h * k * LIFTK - 34, bw = icons.length * 15 + 6;
+    c.fillStyle = 'rgba(10,13,9,.88)'; rr(c, x - bw / 2, by - 9, bw, 17, 8); c.fill(); c.strokeStyle = USE_SK[u] && !useOn(q, u) ? '#ffb340' : '#a3bf6e66'; c.lineWidth = 1; c.stroke();
+    c.font = '11px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; icons.forEach((ic, i) => { c.globalAlpha = (ic === '🔌' || ic === '⚠️') ? .55 : 1; c.fillText(ic, x - bw / 2 + 10 + i * 15, by); }); c.globalAlpha = 1; c.textBaseline = 'alphabetic'; }
+  // buildings the next wall line will take in
+  for (const k2 of wallSet().inc) { const b = buildings.find(x => bKey(x) === k2); if (!b || insideWall(b)) continue; c.save(); c.setLineDash([4, 4]); c.strokeStyle = '#ffd27a'; c.lineWidth = 2; poly2(c, b.poly.map(([px, py]) => P(px, py))); c.stroke(); c.restore(); }
+  // placing a long gun: show which rooftops give it reach
+  if (buildMode && LONG_T.includes(buildMode)) for (const b of buildings) { if (b.h < 9 || Math.hypot(b.x, b.y) > 320 || !(cellAt(b) || {}).c) continue; const hot = b.h >= 15; c.fillStyle = hot ? 'rgba(255,90,60,.4)' : 'rgba(255,190,60,.3)'; poly2(c, b.poly.map(([px, py]) => P(px, py))); c.fill(); const [x, y] = P(b.x, b.y); c.font = 'bold 10px system-ui'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = '#000'; c.fillStyle = '#fff'; const t = `+${hot ? 30 : 15}%`; c.strokeText(t, x, y); c.fillText(t, x, y); }
+})(drawOcc);
+showGhostBar = (o => () => { o(); if (ghost && LONG_T.includes(ghost.type)) { const h = roofOf({ x: ghost.x, y: ghost.y }), m = roofBonus(h), sm = q$('#mode small'); if (sm) sm.insertAdjacentHTML('beforeend', m ? ` · 🏙️ next to a ${Math.round(h)} m building: +${Math.round(m * 100)}% range` : ' · Tip: place it beside a tall building for more range'); } })(showGhostBar);
+towerSheet = (o => t => { o(t); const m = rangeMul(t); if (m > 1 && q$('#sheet h3')) q$('#sheet h3').insertAdjacentHTML('afterend', `<div class="row"><div>📈 Range bonus +${Math.round((m - 1) * 100)}%<small>${roofBonus(roofOf(t)) ? `Beside a ${Math.round(roofOf(t))} m building. ` : ''}${activeUses('radio').some(q => dist(q, t) < 90) ? 'Spotter on the broadcast station.' : ''}</small></div></div>`); if (ammoMul(t) < 1 && q$('#sheet h3')) q$('#sheet h3').insertAdjacentHTML('afterend', '<div class="row"><div>🚚 Supplied by the depot<small>Uses 30% less ammo</small></div></div>'); })(towerSheet);
+worldTick = (o => () => { o(); infraTick(); })(worldTick);
+
+// ================= the Foreman matches people to work as a whole, not one job at a time =================
+// Hungarian assignment: maximize total fit between people and the jobs the camp needs right now
+function bestMatch(M) { const n = M.length, m = M[0].length, N = Math.max(n, m), big = 1e6, a = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => i < n && j < m ? big - M[i][j] : big));
+  const u = Array(N + 1).fill(0), v = Array(N + 1).fill(0), p = Array(N + 1).fill(0), way = Array(N + 1).fill(0);
+  for (let i = 1; i <= N; i++) { p[0] = i; let j0 = 0; const minv = Array(N + 1).fill(Infinity), used = Array(N + 1).fill(false);
+    do { used[j0] = true; const i0 = p[j0]; let d = Infinity, j1 = 0; for (let j = 1; j <= N; j++) if (!used[j]) { const cur = a[i0 - 1][j - 1] - u[i0] - v[j]; if (cur < minv[j]) { minv[j] = cur; way[j] = j0; } if (minv[j] < d) { d = minv[j]; j1 = j; } }
+      for (let j = 0; j <= N; j++) if (used[j]) { u[p[j]] += d; v[j] -= d; } else minv[j] -= d; j0 = j1; } while (p[j0] !== 0);
+    do { const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0); }
+  const out = Array(n).fill(-1); for (let j = 1; j <= N; j++) if (p[j] && p[j] <= n && j <= m) out[p[j] - 1] = j - 1; return out; }
+const ORD_OFF = new Set(['nightscav']);
+Object.assign(ORD, {
+  rest: ['😴', 'Rest rota', 'People who are exhausted or badly hurt come off their job until they recover'],
+  ration: ['🥫', 'Automatic rations', 'Short rations when food is under a day and a half, normal rations again once it recovers'],
+  press: ['🔸', 'Ammo reserve', 'Presses ammo from scrap when it drops below 80 and there is scrap to spare'],
+  watch: ['🌙', 'Night watch', 'At night the Foreman puts extra people on guard, taken from the farms and the scavenging'],
+  nightscav: ['🎒', 'Scavengers home by dark', 'No scavenging at night. Safer, but less comes in'],
+  share: ['🤝', 'Fair shares', 'Anyone who has gone a long time without gear moves to the front of the line for the next weapon or armor'],
+  raidgate: ['🚧', 'Lock down for raiders', 'Shuts the gate as soon as raiders are spotted, even in daylight'],
+  water: ['💧', 'Water emergency', 'When water runs very low, everyone not on guard hauls water until it recovers'],
+});
+foreman = function () {
+  const J = S.camp.jobs, all = S.people.filter(p => (!p.out || p.role === 'scav') && !p.quar && p.hp > 20 && !(p.inf && !p.hid)), mine = all.filter(p => S.t - (p.jobSet ?? -9999) < 400), n = all.length; if (!n) return; for (const k in JOBS) J[k] ??= 0;
+  const rest = ord('rest') ? all.filter(p => !mine.includes(p) && ((p.need && p.need.rest < 15) || p.hp < 35)) : [], ppl = all.filter(p => !mine.includes(p) && !rest.includes(p));
+  const guns = S.towers.filter(isGun).length, foodMin = RATE.food || 0, want = {}, night = isNight();
+  want.farm = S.res.food < 40 || foodMin < 0 ? Math.max(1, Math.ceil(homeOf('bed').length / 3), Math.ceil(n * .25)) : Math.max(1, Math.ceil(homeOf('bed').length / 3));
+  want.water = ord('water') && S.res.water < 12 ? n : S.res.water < 25 ? Math.max(2, n >> 2) : S.res.water < 60 && !(S.water && S.water.on) ? 2 : S.res.water < 90 && !(S.water && S.water.on) ? 1 : 0;
+  want.medic = S.camp.sick || S.people.some(p => p.hp < 50) ? Math.min(Math.ceil(n / 3), 1 + (S.camp.sick >> 1)) : n > 7 ? 1 : 0;
+  want.clean = S.camp.hyg < 30 ? Math.max(2, Math.ceil(n / 3)) : S.camp.hyg < 55 || S.camp.corpses > 8 ? Math.max(1, n >> 2) : n > 6 ? 1 : 0;
+  want.mech = S.towers.some(t => t.hp < TOWERS[t.type].hp * .6) || S.robots.some(r => r.broken) ? Math.max(1, n >> 3) : n > 8 ? 1 : 0;
+  want.wallc = wallPct() < .9 ? Math.max(1, Math.min(3, n >> 2)) : 1; want.cook = n >= 6 ? 1 : 0;
+  want.guard = Math.min(Math.ceil(n * .4), Math.max(n >= 4 ? 1 : 0, S.wave > 3 && n >= 6 ? 2 : 0, Math.ceil(Math.max(0, guns - 4) / 2) + (S.wave > 5 ? 1 : 0)));
+  if (night && ord('watch')) want.guard = Math.min(Math.ceil(n * .55), want.guard + Math.max(1, n >> 2));
+  if (want.water >= n) for (const k in want) if (k !== 'water' && k !== 'guard') want[k] = 0;
+  const prio = S.camp.hyg < 35 || S.camp.sick > 1 ? ['clean', 'medic', 'water', 'farm', 'guard', 'wallc', 'mech', 'cook'] : ['medic', 'farm', 'water', 'guard', 'wallc', 'mech', 'clean', 'cook'];
+  for (const k in J) J[k] = 0; for (const p of mine) if (JOBS[p.role]) { J[p.role]++; if (want[p.role]) want[p.role]--; }
+  const scavOk = !(S.gate && !S.gate.open && !isNight()) && !(night && (ord('nightscav') || ord('watch')));
+  // slots in order of need; anything left over goes to whatever each person does best
+  const slots = []; prio.forEach((r, i) => { for (let q = 0; q < (want[r] || 0); q++) slots.push([r, 40 - i * 3 - q * .5]); }); if (scavOk) for (let q = 0; q < Math.max(1, ppl.length >> 1); q++) slots.push(['scav', 12 - q]);
+  const pool = Object.keys(JOBS).filter(k => k !== 'scav' || scavOk); for (const p of ppl) { const b = bestJob(p); if ((b !== 'scav' || scavOk) && skillOf(p, JOBSK[b]) >= 5) slots.push([b, 24]); } while (slots.length < ppl.length + 2) for (const r of pool) slots.push([r, 0]);
+  if (ppl.length) { const M = ppl.map(p => slots.map(([r, w]) => skillOf(p, JOBSK[r]) * 10 + w + (p.role === r ? 3 : 0) + (p.trait === 'green' && r === 'farm' ? 6 : 0) + (p.trait === 'nurse' && r === 'medic' ? 6 : 0) + (p.trait === 'tinker' && r === 'mech' ? 6 : 0) + (p.trait === 'marks' && r === 'guard' ? 6 : 0) - (p.trait === 'coward' && (r === 'guard' || r === 'scav') ? 15 : 0)));
+    const pickd = bestMatch(M); ppl.forEach((p, i) => { const r = slots[pickd[i]] ? slots[pickd[i]][0] : bestJob(p); if (p.out && p.role !== r) { p.nextRole = r; J[p.role] = (J[p.role] || 0) + 1; return; } p.nextRole = null; if (p.role !== r && JOBS[p.role] && S.t > 30 && skillOf(p, JOBSK[r]) >= 5 && Math.random() < .3) speak(p, JOBS[r].i); p.role = r; J[r]++; }); }
+  for (const p of rest) { p.role = 'idle'; p.resting = true; } for (const p of all) if (!rest.includes(p)) p.resting = false;
+};
+const bestJob = p => Object.keys(JOBS).sort((a, b) => skillOf(p, JOBSK[b]) - skillOf(p, JOBSK[a]))[0];
+// arrivals and departures used to reshuffle roles first-come-first-served; now the Foreman rebalances right away
+syncPeople = (o => () => { const roles = new Map((S.people || []).map(p => [p, p.role])); o(); if (!S.people || !S.camp) return; for (const p of S.people) if (roles.has(p) && !p.quar && roles.get(p) !== 'quar') p.role = roles.get(p); for (const p of S.people) if (p.role === 'idle' && !p.resting && !p.quar) p.role = bestJob(p); if (S.t > 2 && ord('jobs')) S.fmSoon = S.t + 1; })(syncPeople);
+const stanceTicks = () => { for (const p of S.people) if (p.nextRole && !p.out) { p.role = p.nextRole; p.nextRole = null; } if (S.fmSoon && S.t >= S.fmSoon && ord('jobs')) { S.fmSoon = 0; foreman(); }
+  if (ord('ration') && S.t % 10 === 0) { const day = S.surv * .008 * DAY * (S.camp.ration ? .6 : 1), on = S.res.food < day * 1.5, off = S.res.food > day * 2.5; if (on && !S.camp.ration) { S.camp.ration = true; feed('🥫', 'Food is low. The camp went on short rations'); } else if (off && S.camp.ration && S.camp.autoRat) { S.camp.ration = false; feed('🥫', 'Food recovered. Normal rations again'); } if (on) S.camp.autoRat = true; }
+  if (ord('press') && S.t % 12 === 0 && S.res.ammo < 80 && S.res.scrap > 120) { S.res.scrap -= 15; S.res.ammo += 30; }
+  if (ord('share') && S.t % 30 === 7) for (const p of S.people) if (p.kitMad > 6 && !p.kitFirst) { p.kitFirst = true; feed('🤝', `${fn(p)} is next in line for gear`); }
+  if (ord('raidgate') && S.gate && S.gate.open && zombies.some(z => z.who && Math.hypot(z.x, z.y) < wallR() + 160)) { S.gate.open = false; S.gate.manual = S.t; toast('🚧 Raiders spotted: gate locked'); }
+  if (ord('jobs') && S.t % 25 === 15 && (isNight() !== !!S.fmNight)) { S.fmNight = isNight(); foreman(); } };
+worldTick = (o => () => { o(); stanceTicks(); })(worldTick);
+// ================= camera: tilt the street toward the horizon; buildings stand up, the sun moves =================
+const CAM = { p: 0, want: 0, M: null, Mi: null, s: 1, key: '' };
+let LIFTK = .55, SUN = { x: .5, y: -.15, a: .28, lx: 1 };
+const CAM_STEPS = [0, 25, 40, 55], CAM_PERSP = 950, CAM_PAD = [.7, 1.6];
+function camMatrix(p, s) { const W = innerWidth, H = innerHeight, ox = W / 2, oy = H * .72;
+  return new DOMMatrix().translate(ox, oy).multiply(new DOMMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, -1 / CAM_PERSP, 0, 0, 0, 1])).rotate(p, 0, 0).scale(s, s).translate(-ox, -oy); }
+// screen point back onto the flat map: solve the projective equations for z = 0
+function camInv(cx, cy) { const M = CAM.M; if (!M) return [cx, cy];
+  const a1 = M.m11 - cx * M.m14, b1 = M.m21 - cx * M.m24, c1 = cx * M.m44 - M.m41, a2 = M.m12 - cy * M.m14, b2 = M.m22 - cy * M.m24, c2 = cy * M.m44 - M.m42, d = a1 * b2 - a2 * b1;
+  return Math.abs(d) < 1e-9 ? [cx, cy] : [(c1 * b2 - c2 * b1) / d, (a1 * c2 - a2 * c1) / d]; }
+function camApply() {
+  const p = CAM.p, W = innerWidth, H = innerHeight, key = p.toFixed(2) + W + 'x' + H; if (key === CAM.key) return; CAM.key = key;
+  if (p < .2) { CAM.M = null; CAM.s = 1; $('map').style.overflow = ''; for (const id of ['map', 'fx']) { $(id).style.transform = ''; } }
+  else { let s = 1; const px = W * CAM_PAD[0], py = H * CAM_PAD[1]; for (; s < 1.6; s += .02) { CAM.M = camMatrix(p, s); if ([[0, 0], [W, 0], [0, H], [W, H]].every(([x, y]) => { const [u, v] = camInv(x, y); return u >= -px && u <= W + px && v >= -py && v <= H + 2; })) break; }
+    CAM.s = s; const css = `perspective(${CAM_PERSP}px) rotateX(${p}deg) scale(${s})`; $('map').style.overflow = 'visible'; for (const id of ['map', 'fx']) { const e = $(id); e.style.transformOrigin = `${W / 2}px ${H * .72}px`; e.style.transform = css; } }
+  if (CAM.tiles) CAM.tiles._update(); const r = p * Math.PI / 180; LIFTK = (.55 + .85 * Math.sin(r)) / Math.cos(r);
+  const hz = $('haze'); if (hz) hz.style.setProperty('--fog', (Math.sin(r) * .75).toFixed(3));
+}
+function sunTick() { const tod = (S.clock % DAY) / DAY, night = isNight(), t = Math.min(1, Math.max(0, tod / .62));
+  if (night) SUN = { x: .25, y: -.12, a: .12, lx: .3 }; else { const az = Math.PI * t, len = .35 + 1.1 * (1 - Math.sin(az)); SUN = { x: -Math.cos(az) * len, y: -.18 - .25 * Math.sin(az), a: .2 + .14 * Math.sin(az), lx: Math.cos(az) }; }
+  const hz = $('haze'); if (hz) { const gold = night ? 0 : Math.max(0, 1 - Math.sin(Math.PI * t) * 1.6); hz.style.setProperty('--gold', gold.toFixed(2)); hz.classList.toggle('night', night); } }
+draw = (o => () => { if (CAM.want !== CAM.p) { CAM.p += Math.sign(CAM.want - CAM.p) * Math.min(Math.abs(CAM.want - CAM.p), 2.2); } camApply(); sunTick(); o(); })(draw);
+window.camCycle = () => { const i = CAM_STEPS.indexOf(CAM.want); CAM.want = CAM_STEPS[(i + 1) % CAM_STEPS.length]; S.f.camP = CAM.want; toast(CAM.want ? `🎥 Camera tilted ${CAM.want}°` : '🎥 Camera straight down'); };
+initMap = (o => () => { o(); const orig = map.mouseEventToContainerPoint.bind(map); map.mouseEventToContainerPoint = e => { if (!CAM.M) return orig(e); const t = e.touches && e.touches[0] || e.changedTouches && e.changedTouches[0] || e, [u, v] = camInv(t.clientX, t.clientY); return L.point(u, v); }; map.eachLayer(l => { if (l instanceof L.TileLayer) { CAM.tiles = l; l.options.keepBuffer = 4; l._getTiledPixelBounds = function (c) { const b = L.GridLayer.prototype._getTiledPixelBounds.call(this, c); if (!CAM.M) return b; const sz = this._map.getSize(); return L.bounds(b.min.subtract([sz.x * CAM_PAD[0], sz.y * CAM_PAD[1]]), b.max.add([sz.x * CAM_PAD[0], 0])); }; } }); CAM.want = CAM.p = S.f.camP || 0; CAM.key = ''; })(initMap);
+// ================= machines that move like they mean it, cars in the street, and a grid that still hums in places =================
+// ---------- buildings are solid: robots slide around them and never park inside the HQ ----------
+let BGRID = null, BGRIDN = -1;
+function bGrid() { if (BGRID && BGRIDN === buildings.length) return BGRID; BGRID = new Map(); BGRIDN = buildings.length; const add = (b, x, y) => { const k = Math.floor(x / 25) + ',' + Math.floor(y / 25); (BGRID.get(k) || BGRID.set(k, []).get(k)).push(b); };
+  for (const b of buildings.concat(hqB ? [hqB] : [])) { if (!b.poly) continue; const xs = b.poly.map(p => p[0]), ys = b.poly.map(p => p[1]); for (let x = Math.floor(Math.min(...xs) / 25); x <= Math.floor(Math.max(...xs) / 25); x++) for (let y = Math.floor(Math.min(...ys) / 25); y <= Math.floor(Math.max(...ys) / 25); y++) add(b, x * 25, y * 25); } return BGRID; }
+const bldAt = (x, y) => (bGrid().get(Math.floor(x / 25) + ',' + Math.floor(y / 25)) || []).find(b => b.kind !== 'shed' && inPoly(x, y, b.poly));
+function pushOut(o, b, pad = .9) { let best = null, bd = 1e9; const P = b.poly; for (let i = 0; i < P.length; i++) { const [ax, ay] = P[i], [bx, by] = P[(i + 1) % P.length], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((o.x - ax) * dx + (o.y - ay) * dy) / l2)), px = ax + dx * t, py = ay + dy * t, d = Math.hypot(o.x - px, o.y - py); if (d < bd) { bd = d; best = [px, py, -dy, dx]; } }
+  if (!best) return; let [px, py, nx, ny] = best; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l; if ((px + nx - b.x) * nx + (py + ny - b.y) * ny < (px - b.x) * nx + (py - b.y) * ny) { nx = -nx; ny = -ny; } o.x = px + nx * pad; o.y = py + ny * pad; }
+// the yard outside the HQ door, where machines wait
+function hqYard(n = 0) { const f = hqB && hqB.face ? hqB.face : { x: 0, y: -1 }, r = (hqB ? Math.max(hqB.hl, hqB.hw) : 6) + 4.5, side = (n % 4 - 1.5) * 2.6; return { x: f.x * r - f.y * side, y: f.y * r + f.x * side }; }
+robotThink = (o => (r, dt) => { const x0 = r.x, y0 = r.y; o(r, dt); if (r.broken) return;
+  const b = bldAt(r.x, r.y); if (b) { if (b === hqB && (r.task === 'idle' || r.task === 'guard' || !r.task)) { const y = hqYard(S.robots.indexOf(r)); r.x += (y.x - r.x) * Math.min(1, dt * 1.5); r.y += (y.y - r.y) * Math.min(1, dt * 1.5); } else if (b !== hqB) pushOut(r, b); }
+  // stuck against something: head for the nearest street and re-plan
+  const mv = Math.hypot(r.x - x0, r.y - y0); r.stk = mv < .01 * dt * 60 && (r.path && r.path.length) ? (r.stk || 0) + dt : 0;
+  if (r.stk > 3) { r.stk = 0; const n = nearestNode(r.x, r.y); if (n >= 0) { r.path = [[RG[n].x, RG[n].y]].concat(r.path || []); } else r.pathK = null; }
+  if (mv > .05) { const T = r.trail ||= []; if (!T.length || Math.hypot(T[T.length - 1][0] - r.x, T[T.length - 1][1] - r.y) > 1.4) { T.push([r.x, r.y, S.t]); if (T.length > 30) T.shift(); } } })(robotThink);
+// robots built at the HQ come out the door
+window.buildRobot = (o => k => { const n = S.robots.length; o(k); const r = S.robots[S.robots.length - 1]; if (S.robots.length > n && r) { const y = hqYard(n); r.x = y.x; r.y = y.y; } })(window.buildRobot);
+
+// ---------- robots and drones look like working machines ----------
+const RTASK = { haul: '📦', wall: '🧱', fix: '🔧', rescue: '🚑', home: '🏠', post: '🛡️', guard: '🛡️', ferry: '🚚', raid: '⚔️', sweep: '🧹', recover: '🧲', harvest: '🌾' };
+drawRobotTop = (o => (c, x, y, k, r, now) => { const u = Math.max(5.5, k * 1.25), a = -(r.ang || 0), night = isNight();
+  if (night && !r.broken) { const g = c.createRadialGradient(x, y, 0, x, y, u * 9); g.addColorStop(0, 'rgba(210,235,255,.32)'); g.addColorStop(1, 'rgba(210,235,255,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(x, y); c.arc(x, y, u * 9, a - .38, a + .38); c.closePath(); c.fill(); }
+  o(c, x, y, k, r, now);
+  if (!r.broken) { c.fillStyle = (now / 160 | 0) % 2 ? '#ffb020' : '#6a4000'; c.beginPath(); c.arc(x + Math.cos(a + 2.4) * u, y + Math.sin(a + 2.4) * u, Math.max(1.2, u * .14), 0, 7); c.fill(); }
+  const z = map.getZoom(); if (z >= 16.5) { const ic = r.broken ? '⚠️' : RTASK[r.task] || '•', lab = z >= 17.6 && r.name ? r.name : '', w = 18 + (lab ? c.measureText(lab).width + 4 : 0), by = y - u * 2.6;
+    c.fillStyle = 'rgba(10,13,9,.82)'; rr(c, x - w / 2, by - 8, w, 15, 7); c.fill(); c.strokeStyle = ROBOTS[r.type].col + 'aa'; c.lineWidth = 1; c.stroke(); c.font = '10px system-ui'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = '#e8f0e0'; c.fillText(ic + (lab ? ' ' + lab : ''), x - w / 2 + 3, by); c.textBaseline = 'alphabetic'; c.textAlign = 'center';
+    const d = ROBOTS[r.type], f = r.hp / d.hp; c.strokeStyle = f > .6 ? '#5fdc6a' : f > .3 ? '#ffb340' : '#ff4d3d'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, u * 1.7, -Math.PI / 2, -Math.PI / 2 + f * 6.28); c.stroke(); } })(drawRobotTop);
+drawDrone = (o => (c, dr, x, y, k, now) => { const D = DROLES[dr.role || 'scav'], u = Math.max(6, Math.min(14, k * 2.2)), night = isNight(), alt = u * 2.2;
+  // downwash on the ground, then the drone a little higher than it used to sit
+  c.strokeStyle = 'rgba(200,210,200,.25)'; c.lineWidth = 1; for (let n = 0; n < 2; n++) { const rr2 = u * (.7 + ((now / 400 + n * .5) % 1) * 1.1); c.globalAlpha = 1 - ((now / 400 + n * .5) % 1); c.beginPath(); c.ellipse(x, y + alt * .5, rr2, rr2 * .35, 0, 0, 7); c.stroke(); } c.globalAlpha = 1;
+  if (dr.cargo) { c.strokeStyle = '#333'; c.beginPath(); c.moveTo(x, y - alt * .5); c.lineTo(x, y + alt * .1); c.stroke(); c.fillStyle = '#8a6a3a'; c.fillRect(x - u * .3, y + alt * .1, u * .6, u * .45); }
+  if (night) { const g = c.createLinearGradient(x, y - alt * .5, x, y + alt * .6); g.addColorStop(0, 'rgba(220,240,255,.35)'); g.addColorStop(1, 'rgba(220,240,255,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(x - u * .15, y - alt * .5); c.lineTo(x + u * .15, y - alt * .5); c.lineTo(x + u * 1.2, y + alt * .6); c.lineTo(x - u * 1.2, y + alt * .6); c.fill(); }
+  o(c, dr, x, y - alt * .5, k, now);
+  const a = -(dr.ang || 0), bl = (now % 1000) < 120; c.fillStyle = bl ? '#ff3030' : '#601010'; c.beginPath(); c.arc(x + Math.cos(a + 1.9) * u * .9, y - alt * .5 + Math.sin(a + 1.9) * u * .9, 1.6, 0, 7); c.fill(); c.fillStyle = bl ? '#30ff60' : '#105020'; c.beginPath(); c.arc(x + Math.cos(a - 1.9) * u * .9, y - alt * .5 + Math.sin(a - 1.9) * u * .9, 1.6, 0, 7); c.fill();
+  if (map.getZoom() >= 16.5) { const bat = (dr.bat ?? 100) / 100; c.fillStyle = 'rgba(10,13,9,.8)'; rr(c, x - 11, y - alt * .5 - u - 12, 22, 13, 6); c.fill(); c.font = '9px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(D.i, x - 4, y - alt * .5 - u - 5.5); c.fillStyle = bat > .4 ? '#5fdc6a' : '#ff4d3d'; c.fillRect(x + 2, y - alt * .5 - u - 8, 6 * bat, 4); c.textBaseline = 'alphabetic'; } })(drawDrone);
+drawVfx = (o => (c, P, k, now) => { for (const r of S.robots) for (const [tx, ty, t] of r.trail || []) { const age = S.t - t; if (age > 40) continue; const [x, y] = P(tx, ty); c.fillStyle = `rgba(40,32,24,${.22 * (1 - age / 40)})`; c.fillRect(x - k * .5, y - k * .15, k, k * .3); } o(c, P, k, now); })(drawVfx);
+
+// ---------- cars and trucks left where they stopped ----------
+const CARS = { sedan: { n: 'Sedan', l: 4.6, w: 1.8, h: 1.4, loot: { fuel: 3, scrap: 6 } }, hatch: { n: 'Hatchback', l: 4, w: 1.7, h: 1.4, loot: { fuel: 2, scrap: 5 } }, pickup: { n: 'Pickup truck', l: 5.4, w: 2, h: 1.8, loot: { fuel: 5, scrap: 10 } }, van: { n: 'Minivan', l: 5, w: 1.9, h: 1.8, loot: { fuel: 4, food: 3 } }, box: { n: 'Box truck', l: 7.5, w: 2.4, h: 3.2, loot: { food: 8, scrap: 14 } }, bus: { n: 'School bus', l: 11, w: 2.5, h: 3, loot: { fuel: 8, scrap: 12 } }, cop: { n: 'Police cruiser', l: 4.9, w: 1.9, h: 1.5, loot: { ammo: 14, fuel: 3 } }, amb: { n: 'Ambulance', l: 6, w: 2.2, h: 2.6, loot: { meds: 6, fuel: 3 } } };
+const CAR_COL = ['#8a1e1e', '#2a3f6a', '#d8d8d0', '#1a1a1a', '#5a6e7a', '#6a5a3a', '#3a5a3a', '#a08a4a', '#7a7a80'];
+function carsInit() { if (S.cars) return; S.cars = []; let id = 0; for (const r of roads) { if (!['residential', 'tertiary', 'secondary', 'primary', 'unclassified', 'living_street', 'service'].includes(r.cls)) continue;
+    for (let i = 0; i < r.pts.length - 1; i++) { const [x0, y0] = r.pts[i], [x1, y1] = r.pts[i + 1], L0 = Math.hypot(x1 - x0, y1 - y0); for (let s = 8 + Math.random() * 30; s < L0 - 6; s += 35 + Math.random() * 70) { const ax = (x1 - x0) / L0, ay = (y1 - y0) / L0, side = Math.random() < .5 ? 1 : -1, off = r.w / 2 - 1.2, x = x0 + ax * s - ay * off * side, y = y0 + ay * s + ax * off * side, d = Math.hypot(x, y);
+      if (d < 26 || d > RADIUS - 20 || Math.random() < .35) continue; const t = pick(['sedan', 'sedan', 'sedan', 'hatch', 'hatch', 'pickup', 'pickup', 'van', 'van', 'box', 'cop', 'amb', 'bus']);
+      S.cars.push({ id: id++, t, x, y, a: Math.atan2(ay, ax) + (Math.random() < .15 ? rnd(-.6, .6) : 0), col: t === 'cop' ? '#1a1a1a' : t === 'amb' ? '#e8e8e0' : t === 'bus' ? '#e0a820' : pick(CAR_COL), wreck: Math.random() < .2 ? (Math.random() < .5 ? 'burnt' : 'crash') : null, done: false }); } } } }
+function drawCarShape(c, x, y, k, car, night, lift) { const C = CARS[car.t], L = C.l * k, Wd = C.w * k, a = -car.a, hgt = C.h * lift * k * .55 / .55;
+  c.save(); c.translate(x, y); c.fillStyle = `rgba(0,0,0,${SUN.a + .08})`; c.save(); c.translate(hgt * .5 * SUN.x / 1.2, hgt * .5 * SUN.y / 1.2); c.rotate(a); rr(c, -L / 2, -Wd / 2, L, Wd, Wd * .25); c.fill(); c.restore();
+  c.rotate(a); const body = car.wreck === 'burnt' ? '#2a2420' : car.col;
+  c.fillStyle = shadeHex(body, night ? .35 : .55); rr(c, -L / 2, -Wd / 2, L, Wd, Wd * .25); c.fill();
+  c.translate(0, 0); c.restore(); c.save(); c.translate(x, y - Math.min(hgt, k * 3)); c.rotate(a);
+  c.fillStyle = shadeHex(body, night ? .5 : .95); rr(c, -L / 2, -Wd / 2, L, Wd, Wd * .25); c.fill(); c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1; c.stroke();
+  const cab = car.t === 'box' || car.t === 'amb' ? [L * .28, L * .48] : car.t === 'bus' ? [-L * .48, L * .48] : car.t === 'pickup' ? [-L * .05, L * .25] : [-L * .22, L * .2];
+  c.fillStyle = car.wreck === 'burnt' ? '#151210' : night ? '#0c1218' : 'rgba(40,60,80,.92)'; c.fillRect(cab[0], -Wd * .38, cab[1] - cab[0], Wd * .76);
+  if (car.t === 'bus' || car.t === 'box' || car.t === 'amb') { c.fillStyle = shadeHex(body, night ? .55 : 1.05); c.fillRect(-L * .46, -Wd * .42, (car.t === 'bus' ? .92 : .7) * L, Wd * .84); if (car.t === 'bus') { c.fillStyle = night ? '#0c1218' : 'rgba(40,60,80,.9)'; for (let n = 0; n < 7; n++) c.fillRect(-L * .44 + n * L * .13, -Wd * .48, L * .09, Wd * .12), c.fillRect(-L * .44 + n * L * .13, Wd * .36, L * .09, Wd * .12); } if (car.t === 'amb') { c.fillStyle = '#c02020'; c.fillRect(-L * .3, -Wd * .08, L * .4, Wd * .16); } }
+  if (car.t === 'cop') { c.fillStyle = '#e8e8e8'; c.fillRect(-L * .5, -Wd * .5, L * .3, Wd); c.fillStyle = (performance.now() / 300 | 0) % 2 && !car.done ? '#3050ff' : '#ff2020'; c.fillRect(-L * .02, -Wd * .3, L * .06, Wd * .6); }
+  if (car.wreck === 'crash') { c.strokeStyle = 'rgba(0,0,0,.5)'; c.beginPath(); c.moveTo(L * .5, -Wd * .3); c.lineTo(L * .35, 0); c.lineTo(L * .5, Wd * .3); c.stroke(); }
+  if (night && !car.done && !car.wreck && car.id % 5 === 0) { c.fillStyle = 'rgba(255,240,180,.8)'; c.fillRect(L * .46, -Wd * .4, L * .04, Wd * .2); c.fillRect(L * .46, Wd * .2, L * .04, Wd * .2); }
+  c.restore(); if (car.done && k > 3) { c.font = '10px system-ui'; c.textAlign = 'center'; c.fillText('✔️', x, y - hgt - 4); } }
+function drawCars(c, P, k, now) { if (!S.cars || map.getZoom() < 16) return; const W = innerWidth, H = innerHeight, night = isNight();
+  for (const car of S.cars) { const [x, y] = P(car.x, car.y); if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue; drawCarShape(c, x, y, k, car, night, LIFTK);
+    if (car.push) { for (let n = 0; n < 3; n++) { const a = car.a + Math.PI + (n - 1) * .35, px = car.x + Math.cos(a) * CARS[car.t].l * .62, py = car.y + Math.sin(a) * CARS[car.t].l * .62, q = P(px, py); drawPersonTop(c, q[0], q[1], Math.max(2.5, .5 * k), { sh: n + 2, hc: n }, car.a + Math.sin(now / 200 + n) * .2, false); } } } }
+drawRivals = (o => (c, P, k, now) => { drawCars(c, P, k, now); o(c, P, k, now); })(drawRivals);
+TOWERS.carwall = { name: 'Car barricade', icon: '🚗', cost: {}, range: 0, hp: 420, col: '#8a8070', desc: 'A car pushed into place. The dead have to climb over or tear through it' };
+TOWER_H.carwall = 0;
+drawTowerTop = (o => (c, x, y, r, t, now, night) => { if (t.type !== 'carwall') return o(c, x, y, r, t, now, night); const k = ppm(); drawCarShape(c, x, y, k, t.car || { t: 'sedan', a: t.rot || 0, col: '#6a6a6a' }, night, LIFTK); })(drawTowerTop);
+// cars block the street: the dead slow to a crawl getting past one
+zombieThink = (o => (z, dt) => { if (!z.who && S.towers.length) for (const t of S.towers) if (t.type === 'carwall' && Math.abs(t.x - z.x) < 5 && Math.abs(t.y - z.y) < 5) { dt *= .3; break; } o(z, dt); })(zombieThink);
+let PUSH = null;
+window.carSheet = id => { const car = S.cars.find(q => q.id === id); if (!car) return; const C = CARS[car.t], crew = S.people.filter(p => !p.out && !p.quar && p.hp > 40).length, held = (cellAt(car) || {}).c;
+  openSheet(`<h3>🚗 ${C.n}${car.wreck === 'burnt' ? ' (burnt out)' : car.wreck === 'crash' ? ' (crashed)' : ''}</h3>
+    <div class="row"><div>Search it<small>${car.done ? 'Already searched. Nothing left.' : `Siphon the tank, check the trunk. Might hold ${fmtCost(C.loot)} and parts. ${car.t === 'cop' ? 'Cruisers have guns.' : ''} Alarms still work sometimes.`}</small></div>${btn('Send someone', `carSearch(${id})`, car.done || !crew || car.searching)}</div>
+    <div class="row"><div>Push it into place<small>Three people roll it up to 90 m and leave it as a barricade: on a street to block it, or on the wall line as an extra layer. ${car.wreck === 'burnt' ? 'Burnt out: the tires are gone, so it moves slowly.' : ''}</small></div>${btn('Push', `carPush(${id})`, crew < 3 || !!car.push)}</div>
+    ${held ? '' : '<small style="color:var(--amb)">This street is outside your land. Whoever goes out there is exposed.</small>'}`, null); };
+window.carSearch = id => { const car = S.cars.find(q => q.id === id); if (!car || car.done) return; const p = S.people.filter(q => !q.out && !q.quar && q.hp > 40).sort((a, b) => skillOf(b, 'scav') - skillOf(a, 'scav'))[0]; if (!p) return; car.searching = { pid: p.id, at: S.t + 12 + Math.hypot(car.x, car.y) / 12 }; p.out = true; toast(`🔎 ${fn(p)} is heading out to check the ${CARS[car.t].n.toLowerCase()}`); closeSheet(); };
+window.carPush = id => { const car = S.cars.find(q => q.id === id); if (!car) return; closeSheet(); PUSH = car; setBuild('carwall'); PUSH = car; showGhostBar(); toast('🚗 Tap where to push it (up to 90 m)'); };
+setBuild = (o => k => { if (!k) PUSH = null; o(k); })(setBuild); window.setBuild = setBuild;
+placeCheck = (o => (ty, p) => { if (!PUSH || ty !== 'carwall') return o(ty, p); const d = dist(PUSH, p), b = bldAt(p.x, p.y), why = d > 90 ? 'Too far to push it (90 m)' : b ? 'Can\'t push it into a building' : !inGrid(...cellOf(p.x, p.y)) ? 'Off the map' : ''; return { type: ty, x: p.x, y: p.y, rot: Math.atan2(p.y - PUSH.y, p.x - PUSH.x), ok: !why, why }; })(placeCheck);
+showGhostBar = (o => () => { o(); if (PUSH) { const e = q$('#mode em'); if (e) e.textContent = 'Push · 3 people'; } })(showGhostBar);
+window.placeGhost = (o => () => { if (!PUSH) return o(); const g = ghost, car = PUSH; if (!g || !g.ok) return; car.push = { tx: g.x, ty: g.y, rot: g.rot }; toast(`💪 Three of them are rolling the ${CARS[car.t].n.toLowerCase()}`); setBuild(null); })(window.placeGhost);
+function carTick() { carsInit();
+  for (const car of S.cars) { if (car.searching && S.t >= car.searching.at) { const p = S.people.find(q => q.id === car.searching.pid); car.searching = null; car.done = true; if (p) { p.out = false; const C = CARS[car.t], g = Object.fromEntries(Object.entries(C.loot).map(([k, v]) => [k, Math.max(1, Math.round(v * (car.wreck ? .4 : 1) * (.6 + Math.random() * .8)))])); give(g); kitInit(); const pr = pick(['cloth', 'pads', 'spring', 'pipe', 'leather']); S.parts[pr] = (S.parts[pr] || 0) + 1; if (car.t === 'cop' && Math.random() < .5) { S.arms.shotgun = (S.arms.shotgun || 0) + 1; learnBp('shotgun', 'the cruiser\'s gun rack', false); } train(p, 'scav', .3);
+        if (Math.random() < .2 && !car.wreck) { noise(car.x, car.y, 140, 6); sfx('siren', car.x, car.y, .5); world('🚨', `The ${C.n.toLowerCase()}'s alarm went off while ${fn(p)} was in it. Everything nearby heard. They got ${fmtCost(g)} and ran.`); } else feed('🔎', `${fn(p)} searched a ${C.n.toLowerCase()}: ${fmtCost(g)}`); if (isNight() && Math.random() < .15) { p.inf = 1; p.hid = true; } } }
+    if (car.push) { const dx = car.push.tx - car.x, dy = car.push.ty - car.y, l = Math.hypot(dx, dy), sp = car.wreck === 'burnt' ? .5 : 1.1; if (l > sp) { car.x += dx / l * sp; car.y += dy / l * sp; car.a += (Math.atan2(dy, dx) - car.a) * .1; if (Math.random() < .04) noise(car.x, car.y, 50, 2); }
+      else { S.towers.push({ type: 'carwall', x: car.push.tx, y: car.push.ty, hp: TOWERS.carwall.hp, lvl: 1, cd: 0, rot: car.a, bp: 1, car: { t: car.t, a: car.a, col: car.col, wreck: car.wreck, id: car.id, done: true } }); S.cars = S.cars.filter(q => q !== car); world('🚗', `The ${CARS[car.t].n.toLowerCase()} is in place. One more thing between us and them.`); sfx('thud', car.x, car.y, .6); } } } }
+onTap = (o => p => { if (!buildMode && S.cars && map.getZoom() >= 16) { const tol = 14 / ppm(); const car = S.cars.find(q => Math.hypot(q.x - p.x, q.y - p.y) < Math.max(tol, CARS[q.t].l * .6)); if (car && !S.people.some(q => !q.out && q.wx != null && Math.hypot(q.wx - p.x, q.wy - p.y) < tol)) return carSheet(car.id); } o(p); })(onTap);
+
+// ---------- the grid: a few substations still feed their neighborhoods ----------
+function gridInit() { if (S.subs) return; S.subs = []; const n = 3 + (Math.random() * 3 | 0); for (let i = 0; i < n * 6 && S.subs.length < n; i++) { const a = rnd(0, 6.28), r = rnd(160, RADIUS * .8), x = Math.cos(a) * r, y = Math.sin(a) * r; if (bldAt(x, y) || S.subs.some(s => Math.hypot(s.x - x, s.y - y) < 260)) continue; S.subs.push({ id: S.subs.length, x, y, hp: 100, on: Math.random() < .75, r: 230 }); } }
+const gridOn = (x, y) => (S.subs || []).some(s => s.on && Math.hypot(s.x - x, s.y - y) < s.r);
+powered = (o => q => o(q) || (powerUse() <= powerCap() && gridOn(q.x, q.y)))(powered);
+function gridTick() { gridInit(); if (S.t % 30 === 0) for (const s of S.subs) { if (!s.on) continue; s.hp -= rnd(.2, 1) * (isNight() ? 1.5 : 1) * DF().grid; if (zombies.some(z => Math.hypot(z.x - s.x, z.y - s.y) < 20)) s.hp -= 4; if (s.hp <= 0) { s.on = false; s.hp = 0; world('🔌', `The substation ${Math.round(Math.hypot(s.x, s.y))} m ${DIRS[Math.round(((Math.atan2(s.y, s.x) + 6.283) % 6.283) / (Math.PI / 4)) % 8]} failed. Its streets went dark.`); } }
+  if (S.t % 10 === 0) { const held = Object.entries(S.cells).filter(([k, c]) => c.c && gridOn(...k.split(',').map(v => +v * CELL))).length; if (held) S.res.elec = Math.min(resCap('elec'), S.res.elec + held * .08); } }
+window.subSheet = id => { const s = S.subs[id], held = (cellAt(s) || {}).c, cost = { scrap: 60, elec: 4 }; openSheet(`<h3>⚡ Substation</h3><div class="row" style="display:block"><b>${s.on ? 'Still running' : 'Dead'}</b>${meter(s.hp, s.on ? '#ecc94a' : '#555')}<small>${s.on ? `Feeds everything within ${s.r} m: houses there count as powered and held blocks there trickle 🔌 batteries. It wears out, faster when the dead crowd it.` : 'Nobody has fixed it. The streets around it are dark.'}</small></div>
+  <div class="row"><div>${s.on ? 'Service it' : 'Get it running'}<small>${held ? 'Your engineers can reach it.' : 'Claim its block first, or the crew will be working in the open.'}</small></div>${btn(fmtCost(cost), `subFix(${id})`, !canPay(cost) || s.hp >= 99)}</div>`, null); };
+window.subFix = id => { const s = S.subs[id]; if (!pay({ scrap: 60, elec: 4 })) return; s.hp = 100; if (!s.on) { s.on = true; world('💡', 'The substation hummed back to life. Lights came on down the street, and people cheered from the wall.'); S.people.forEach(p => moodlet(p, 'The lights came back on', 8, 900)); } subSheet(id); };
+onTap = (o => p => { if (!buildMode && S.subs) { const tol = 16 / ppm(), s = S.subs.find(q => Math.hypot(q.x - p.x, q.y - p.y) < Math.max(tol, 8)); if (s) return subSheet(s.id); } o(p); })(onTap);
+function drawGrid(c, P, k, now) { if (!S.subs) return; const night = isNight(), z = map.getZoom();
+  for (const s of S.subs) { const [x, y] = P(s.x, s.y); if (s.on) { const R = s.r * k, g = c.createRadialGradient(x, y, R * .2, x, y, R); g.addColorStop(0, night ? 'rgba(255,214,120,.12)' : 'rgba(255,220,120,.05)'); g.addColorStop(1, 'rgba(255,214,120,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, R, 0, 7); c.fill(); }
+    const u = Math.max(7, k * 3); c.fillStyle = '#2a2a24'; c.fillRect(x - u, y - u * .7, u * 2, u * 1.4); c.strokeStyle = s.on ? '#ecc94a' : '#555'; c.lineWidth = 2; c.strokeRect(x - u, y - u * .7, u * 2, u * 1.4); c.font = `${u | 0}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = s.on ? 1 : .45; c.fillText('⚡', x, y); c.globalAlpha = 1; c.textBaseline = 'alphabetic';
+    if (s.on && (now / 600 + s.id) % 1 < .5) { c.fillStyle = 'rgba(255,230,120,.9)'; c.fillRect(x + u * .7, y - u * .9, 2, 2); } }
+  // streetlights in the lit neighborhoods after dark
+  if (night && z >= 16) { c.fillStyle = 'rgba(255,205,120,.95)'; for (const r of roads) for (let i = 0; i < r.pts.length - 1; i++) { const [x0, y0] = r.pts[i], [x1, y1] = r.pts[i + 1], L0 = Math.hypot(x1 - x0, y1 - y0); for (let s = 0; s < L0; s += 32) { const wx = x0 + (x1 - x0) * s / L0, wy = y0 + (y1 - y0) * s / L0; if (!gridOn(wx, wy)) continue; const [x, y] = P(wx, wy); if (x < -20 || y < -20 || x > innerWidth + 20 || y > innerHeight + 20) continue; const g = c.createRadialGradient(x, y, 0, x, y, 6 * k); g.addColorStop(0, 'rgba(255,205,120,.35)'); g.addColorStop(1, 'rgba(255,205,120,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, 6 * k, 0, 7); c.fill(); c.fillStyle = '#ffe0a0'; c.fillRect(x - 1, y - 1, 2, 2); } } } }
+drawRivals = (o => (c, P, k, now) => { drawGrid(c, P, k, now); o(c, P, k, now); })(drawRivals);
+cellSheet = (o => (i, j) => { o(i, j); const h = q$('#sheet h3'); if (h) h.insertAdjacentHTML('afterend', `<div class="row"><div>${gridOn(i * CELL, j * CELL) ? '💡 On a working substation' : '🔌 No grid power'}<small>${gridOn(i * CELL, j * CELL) ? 'Houses here count as powered. Held, it trickles batteries.' : 'Bring your own generator.'}</small></div></div>`); })(cellSheet);
+worldTick = (o => () => { o(); carTick(); gridTick(); })(worldTick);
+
+// ================= how hard the world is: five ways the end can go =================
+const DIFFS = {
+  simp: { n: 'Simp-simulation', i: '🧸', d: 'Small, slow nights. Gangs keep to themselves for a long time. Bites rarely turn. People stay hopeful. For learning the ropes or just building.', wave: .5, zhp: .7, ramp: 0, raid: .5, raidN: 9, ev: 1.7, bite: .5, mood: 8, map: .8, wear: .5, grid: .5, trust: 10 },
+  calm: { n: 'Quiet Apocalypse', i: '🌤️', d: 'The dead come, but you have room to breathe. Raiders test you now and then.', wave: .75, zhp: .85, ramp: .005, raid: .75, raidN: 5, ev: 1.25, bite: .75, mood: 4, map: .9, wear: .75, grid: .75, trust: 5 },
+  norm: { n: 'Survival', i: '☠️', d: 'The intended game. Every system pushes back, and mistakes cost people.', wave: 1, zhp: 1, ramp: .01, raid: 1, raidN: 3, ev: 1, bite: 1, mood: 0, map: 1, wear: 1, grid: 1, trust: 0 },
+  hard: { n: 'Collapse', i: '🔥', d: 'Bigger, tougher nights that keep growing. Gangs raid early and often. Things break. People are on edge.', wave: 1.3, zhp: 1.15, ramp: .02, raid: 1.3, raidN: 2, ev: .75, bite: 1.25, mood: -3, map: 1.1, wear: 1.4, grid: 1.5, trust: -5 },
+  impl: { n: 'Society Implosion', i: '💀', d: 'Everything at once, and worse every night. Strangers lie, gangs never rest, the grid dies fast, gear falls apart, and nobody trusts you yet.', wave: 1.6, zhp: 1.3, ramp: .035, raid: 1.7, raidN: 2, ev: .55, bite: 1.5, mood: -6, map: 1.2, wear: 2, grid: 2.2, trust: -15 },
+};
+const DF = () => DIFFS[(S && S.diff) || 'norm'] || DIFFS.norm;
+let DIFF_PICK = (() => { try { return localStorage.getItem('deadgrid.diff') || 'norm'; } catch (e) { return 'norm'; } })();
+window.pickDiff = k => { DIFF_PICK = k; try { localStorage.setItem('deadgrid.diff', k); } catch (e) {} renderDiff(); };
+function renderDiff() { const el = $('diffbox'); if (!el) return; const D = DIFFS[DIFF_PICK]; el.innerHTML = `<div class="dtitle">Difficulty</div><div class="dchips">${Object.entries(DIFFS).map(([k, d]) => `<button class="${k === DIFF_PICK ? 'on' : ''}" onclick="pickDiff('${k}')"><b>${d.i}</b><span>${d.n}</span></button>`).join('')}</div><p class="ddesc"><b>${D.i} ${D.n}.</b> ${D.d}</p>`; }
+newState = (o => (lat, lon, label) => { const st = o(lat, lon, label); st.diff = DIFF_PICK; return st; })(newState);
+// nights: size scales with the mode and keeps climbing in the harsh ones
+startWave = (o => () => { o(); const D = DF(), m = D.wave * (1 + D.ramp * Math.max(0, S.wave - 2)); if (Math.abs(m - 1) < .02) return; const body = waveQueue.filter(q => q !== 'tank'), want = Math.max(4, Math.round(body.length * m)); if (want < body.length) { let cut = body.length - want; for (let i = waveQueue.length - 1; i >= 0 && cut > 0; i--) if (waveQueue[i] !== 'tank') { waveQueue.splice(i, 1); cut--; } } else for (let i = body.length; i < want; i++) waveQueue.push('surge'); S.surge = Math.ceil(waveQueue.length / 3); })(startWave);
+spawnZombie = (o => (m, a, b, f) => { const n = zombies.length, r = o(m, a, b, f); if (zombies.length > n) { const z = zombies[zombies.length - 1], D = DF(); if (!ZTYPES[z.t].human) { const k = D.zhp * (1 + D.ramp * .5 * Math.max(0, S.wave - 2)); z.hp *= k; z.max = (z.max || z.hp / k) * k; } } return r; })(spawnZombie);
+bite = (o => m => { if (Math.random() > Math.min(1, DF().bite)) return; o(m); })(bite);
+directorTick = (o => () => { const was = S.dirT; o(); if (S.dirT > (was ?? 0) + 5) S.dirT *= DF().ev; })(directorTick);
+moodlets = (o => p => { const L = o(p), v = DF().mood; if (v) L.push([v > 0 ? 'It feels like we can make it' : 'The world is coming apart', v]); return L; })(moodlets);
+syncPeople = (o => () => { const had = new Set((S.people || []).map(p => p.id)); o(); const t = DF().trust; if (t) for (const p of S.people || []) if (!had.has(p.id) && !p.diffT) { p.diffT = 1; addTrust(p, t); } })(syncPeople);
+// ================= conversations that start from what actually happened =================
+// Each topic reads the real camp: who died, what you decided, what they're good at, who they're fighting with.
+// Every answer says what it does, and their reply depends on who they are and what you've said before.
+const tmp = p => { const s = psyche(p); return s.temper > .62 ? 'hot' : s.warm > .62 ? 'warm' : s.pride > .62 ? 'proud' : s.humor > .65 ? 'wry' : 'plain'; };
+const byT = (p, o) => { const k = tmp(p); return pick([].concat(o[k] || o.plain)); };
+const said = (p, k) => ((p.said ||= {})[k]);
+const remSay = (p, k, v) => { (p.said ||= {})[k] = { d: dayNo(), v }; };
+function nightLogTick() { const n = isNight(); if (n && !S.nl0) S.nl0 = { k: S.kills, dead: (S.dead || []).length, w: wallPct() }; if (!n && S.nl0) { S.lastNight = { k: S.kills - S.nl0.k, dead: (S.dead || []).slice(S.nl0.dead), w: Math.round(wallPct() * 100), low: Math.round(Math.min(S.nl0.w, wallPct()) * 100), d: dayNo(), n: Math.max(1, S.wave - 2) }; S.nl0 = null; } }
+const jobN = r => JOBS[r] ? JOBS[r].n.toLowerCase() : 'nothing';
+const TTOP = {
+  lastnight: { w: p => S.lastNight && S.lastNight.d === dayNo() && !said(p, 'ln' + dayNo()) ? 3 : 0, mk: p => { const L = S.lastNight, lost = L.dead.length;
+    return { open: lost ? byT(p, { plain: `${L.k} of them last night, and we lost ${L.dead.join(' and ')}. I keep doing the math and it never comes out right.`, hot: `We killed ${L.k} of them and they still took ${L.dead.join(' and ')}. Somebody tell me what that was for.`, warm: `I keep thinking about ${L.dead[0]}. ${L.k} of those things went down and I can't remember a single one. Just ${L.dead[0]}.`, proud: `${L.k} kills. We held. But ${L.dead.join(' and ')}… that's on all of us.` }) : L.low < 40 ? byT(p, { plain: `The wall got down to ${L.low}% last night. I was on that section. I heard it giving.`, hot: `${L.low}%. The wall was at ${L.low}% and I'm the only one who seems scared about it.`, warm: `Did you sleep? I didn't. The wall was at ${L.low}% at one point. I kept counting who was closest to it.` }) : byT(p, { plain: `${L.k} of them last night and nobody lost. I don't trust it. Feels like the world's saving up.`, wry: `${L.k} down, zero of us. If this keeps up I'm going to start getting cocky, and that's when they get you.`, proud: `${L.k} put down and the wall held at ${L.w}%. That's us. That's what we built.` }),
+      o: [[lost ? 'Say their names with me' : 'Tell them they did well', { t: 6, m: lost ? 8 : 6, ml: [lost ? 'We said their names' : 'Told we did well', lost ? 6 : 4, 600], reply: p2 => lost ? byT(p2, { plain: '…Thanks. Out loud is different.', warm: '*says them quietly* Okay. Okay. They were here.', hot: 'Fine. Names. Doesn\'t fix it, but fine.' }) : byT(p2, { plain: 'Yeah. We did, didn\'t we.', proud: 'Damn right we did.', wry: 'Put it on the fridge.' }) }],
+        ['Ask what went wrong on their section', { train: 'shoot', t: 3, reply: p2 => byT(p2, { plain: `Ammo ran thin around the third push. And we had ${S.towers.filter(isGun).length} guns for a wall that size. That's the real answer.`, proud: 'Nothing went wrong on mine. Look at the east side if you want problems.', hot: 'What went wrong? We\'re outnumbered fifty to one, that\'s what.' }) }],
+        ['"We\'ll be ready next time." (they\'ll hold you to it)', { t: 4, do: p2 => remSay(p2, 'ready', S.wave), reply: p2 => byT(p2, { plain: 'I\'m going to remember you said that.', hot: 'You\'d better be.', warm: 'Okay. I believe you. Mostly.' }) }],
+        ['Change the subject', { t: -2, m: -2, reply: p2 => byT(p2, { plain: 'Right. Sure.', hot: 'Of course you would.', warm: 'Oh. Okay. Sorry.' }) }]] }; } },
+  callback: { w: p => { const r = said(p, 'ready'); return r && S.lastNight && S.lastNight.d === dayNo() && r.v < S.wave && !said(p, 'cb' + dayNo()) ? 4 : 0; }, mk: p => { const L = S.lastNight, kept = !L.dead.length && L.low >= 40; delete p.said.ready; remSay(p, 'cb' + dayNo(), 1);
+    return { open: kept ? byT(p, { plain: 'You said we\'d be ready. We were. I wanted you to know I noticed.', proud: 'You called it. We were ready. I don\'t say that lightly.', hot: 'All right. You said ready, and we were. Credit where it\'s due.' }) : byT(p, { plain: `You told me we'd be ready. ${L.dead.length ? L.dead.join(' and ') + ' would disagree.' : `The wall hit ${L.low}%.`}`, hot: `"We'll be ready." That's what you said. ${L.dead.length ? 'Tell ' + L.dead[0] + ' that.' : 'We weren\'t.'}`, warm: 'I\'m not angry. I wanted to believe you, that\'s all. It\'s harder now.' }),
+      o: kept ? [['"We earned it together."', { t: 6, m: 6, reply: 'Yeah. Together.' }], ['"Next one will be harder."', { t: 2, reply: p2 => byT(p2, { plain: 'I know. Let me have this one for a minute.', proud: 'Then we\'ll be harder too.' }) }]]
+        : [['Own it: "I was wrong."', { t: 8, m: 2, reply: p2 => byT(p2, { plain: 'Thank you. That\'s all I needed. Somebody owning it.', hot: '…Okay. That\'s more than most would say.', proud: 'Good. Now fix it.' }) }], ['Explain what you\'re changing', { t: 5, reply: 'Then show me. Not tell me. Show me.' }], ['"Nobody could have stopped that."', { t: -8, m: -6, mem: 'You made excuses when people died', reply: p2 => byT(p2, { plain: 'Sure. Nobody.', hot: 'Unbelievable.', warm: '…I think you believe that. I don\'t.' }) }]] }; } },
+  wrongjob: { w: p => { const b = bestJob(p); return JOBS[p.role] && b !== p.role && skillOf(p, JOBSK[b]) >= 5.5 && skillOf(p, JOBSK[p.role]) < 3 && !said(p, 'wj') ? 2.5 : 0; }, mk: p => { const b = bestJob(p);
+    return { open: byT(p, { plain: `I was a ${p.bio}. I'm good at ${SK[JOBSK[b]][1].toLowerCase()}, actually good. And I've been on ${jobN(p.role)} for days.`, hot: `Do you even know what I can do? Because putting me on ${jobN(p.role)} says you don't.`, warm: `I don't mind ${jobN(p.role)}, really. I just think I'd help more as a ${jobN(b)}. If that's okay.`, proud: `You're wasting me on ${jobN(p.role)}. I'm the best ${SK[JOBSK[b]][1].toLowerCase()} in this camp and everybody knows it.` }),
+      o: [[`Make them a ${jobN(b)}, starting now`, { t: 9, m: 10, do: p2 => { p2.role = b; p2.jobSet = S.t; }, reply: p2 => byT(p2, { plain: 'Finally. You won\'t regret it.', proud: 'About time.', warm: 'Oh! Thank you. I\'ll be good at it, I promise.' }) }],
+        ['Explain why the camp needs them where they are', { t: 3, m: -2, do: p2 => remSay(p2, 'wj', 1), reply: p2 => byT(p2, { plain: 'Okay. I don\'t love it, but I get it.', hot: 'Fine. I\'ll do it. Don\'t expect a smile.', proud: 'Then find someone else soon. I mean it.' }) }],
+        ['"In two days, I promise." (they\'ll check)', { t: 5, do: p2 => { remSay(p2, 'wj', 1); (S.later ||= []).push({ at: S.t + DAY * 2, k: 'jobPromise', id: p2.id, job: b }); }, reply: 'Two days. I\'m counting.' }]] }; } },
+  hurt: { w: p => p.hp < 60 && !said(p, 'hurt' + dayNo()) ? 2.2 : 0, mk: p => ({ open: byT(p, { plain: `It's my side. It's fine. It's not fine. I can still work, I just can't lift much.`, hot: 'Don\'t look at me like that. It\'s a scratch. A deep scratch.', warm: 'I didn\'t want to say anything, everyone\'s got enough. But it hurts to breathe on the left.', proud: 'I can work. Don\'t you dare take me off the line.' }),
+    o: [['Use medicine on them now (1 💊)', { need: { meds: 1 }, pay: { meds: 1 }, t: 7, m: 6, do: p2 => { p2.hp = Math.min(100, p2.hp + 30); remSay(p2, 'hurt' + dayNo(), 1); }, reply: p2 => byT(p2, { plain: 'Oh, that\'s better. Thank you.', proud: '…Fine. Thank you.', hot: 'Should\'ve done that yesterday. But thanks.' }) }],
+      ['Order them to rest today', { t: 3, do: p2 => { p2.need.rest = 100; p2.hp = Math.min(100, p2.hp + 10); remSay(p2, 'hurt' + dayNo(), 1); }, reply: p2 => byT(p2, { plain: 'A whole day. Okay. I\'ll try not to go crazy.', proud: 'Against my objection. Noted.' }) }],
+      ['"We need everyone on their feet."', { t: -4, m: -6, ml: ['Told to work hurt', -6, 600], do: p2 => remSay(p2, 'hurt' + dayNo(), 1), reply: p2 => byT(p2, { plain: 'Yeah. Got it.', warm: 'Okay. I\'ll manage.', hot: 'Great. Good to know what I\'m worth.' }) }]] }) },
+  feud: { w: p => { const e = S.people.filter(q => q !== p).sort((a, b) => relOf(p, a) - relOf(p, b))[0]; return e && relOf(p, e) < -25 && !said(p, 'fd' + e.id) ? 2 : 0; }, mk: p => { const e = S.people.filter(q => q !== p).sort((a, b) => relOf(p, a) - relOf(p, b))[0], en = fn(e);
+    return { open: byT(p, { plain: `${en} and I can't be on the same shift anymore. You must have noticed.`, hot: `If ${en} touches my stuff one more time, I'm not responsible for what happens.`, warm: `I've tried with ${en}. I really have. I don't know what I did.`, proud: `${en} is dead weight and you know it. I'm tired of covering for them.` }),
+      o: [[`Sit them down with ${en} tonight`, { t: 4, do: p2 => { remSay(p2, 'fd' + e.id, 1); const ok = Math.random() < .35 + psyche(p2).warm * .4 + psyche(e).warm * .2; const v = ok ? 30 : -10; (p2.rel ||= {})[e.id] = (p2.rel[e.id] || 0) + v; (e.rel ||= {})[p2.id] = (e.rel[p2.id] || 0) + v; world(ok ? '🤝' : '💢', ok ? `${fn(p2)} and ${en} talked it out by the fire. They're not friends, but it's better.` : `${fn(p2)} and ${en} sat down to talk and it turned into shouting. Worse than before.`); }, reply: 'Fine. If you\'re there. Don\'t let them make it about me.' }],
+        [`Take ${fn(p)}'s side`, { t: 8, do: p2 => { remSay(p2, 'fd' + e.id, 1); moodlet(e, `You sided with ${fn(p2)} against me`, -10, 900); addTrust(e, -8); }, reply: p2 => byT(p2, { plain: 'Thank you. I needed someone to say it.', hot: 'Good. Someone finally sees it.' }) }],
+        ['Split their shifts and stay out of it', { t: 1, do: p2 => remSay(p2, 'fd' + e.id, 1), reply: p2 => byT(p2, { plain: 'That\'ll do for now.', hot: 'Coward\'s answer. But fine.', warm: 'Okay. That helps, actually.' }) }]] }; } },
+  decision: { w: p => { const b = (S.bands || []).concat(S.bandLog || []).find(x => x.how && x.how !== 'away' && x.metD >= dayNo() - 1); return b && !said(p, 'dec' + b.id) ? 2.4 : 0; }, mk: p => { const b = (S.bands || []).concat(S.bandLog || []).find(x => x.how && x.how !== 'away' && x.metD >= dayNo() - 1), s = psyche(p), likes = b.how === 'robbed' ? s.warm < .35 && s.pride > .5 : s.warm > .4;
+    return { open: b.how === 'robbed' ? (likes ? `Those people on the road. Hard call, robbing them. Right call, though. We eat because of it.` : `I keep seeing ${b.boss.split(' ')[0]}'s face. We took everything they had. There were kids.`) : (likes ? `Letting ${b.boss.split(' ')[0]}'s people have food. That's the first thing in weeks that felt like before.` : `We gave food to strangers. Our food. I hope you know what you're doing.`),
+      o: [['Stand by it', { t: likes ? 5 : -3, do: p2 => remSay(p2, 'dec' + b.id, 1), reply: likes ? 'Good. I\'d have done the same.' : 'Then I hope you\'re right.' }], ['Admit you\'re not sure', { t: 3, do: p2 => remSay(p2, 'dec' + b.id, 1), reply: 'Me neither. Maybe that\'s the honest answer.' }], [`Ask what ${fn(p)} would have done`, { t: 5, m: 4, do: p2 => remSay(p2, 'dec' + b.id, 1), reply: likes ? 'Same thing. Exactly the same.' : 'I\'d have found another way. I don\'t know what. Something.' }]] }; } },
+  hungry: { w: p => (S.res.food < S.surv * 3 || S.res.water < S.surv * 3) && !said(p, 'hg' + dayNo()) ? 2.2 : 0, mk: p => { const f = S.res.food < S.surv * 3, what = f ? 'food' : 'water', left = Math.floor(f ? S.res.food : S.res.water);
+    return { open: byT(p, { plain: `There's ${left} left in ${what}. For ${S.surv} people. I counted twice.`, hot: `${left} ${what}. You're telling me there's a plan, right? There's a plan.`, warm: `I can go without for a bit. Really. Give mine to ${pick(S.people.filter(q => q !== p).map(fn)) || 'the others'}.`, proud: `I'll go out myself if I have to. ${left} ${what} isn't enough to wait on.` }),
+      o: [['Put the camp on short rations', { t: 2, do: p2 => { S.camp.ration = true; remSay(p2, 'hg' + dayNo(), 1); }, reply: 'Okay. It\'ll be tight, but okay.' }], [`Send more people for ${what}`, { t: 4, do: p2 => { remSay(p2, 'hg' + dayNo(), 1); S.fmSoon = S.t + 1; }, reply: 'Good. Send me if you need to.' }], ['"We\'ll find something." (no plan)', { t: -5, do: p2 => remSay(p2, 'hg' + dayNo(), 1), reply: p2 => byT(p2, { plain: 'That\'s not a plan.', hot: 'That\'s not an answer!', warm: '…Okay.' }) }]] }; } },
+  growing: { w: p => { const b = bestSkill(p); return skillOf(p, b) >= 7 && !said(p, 'gr' + b) ? 1.3 : 0; }, mk: p => { const b = bestSkill(p);
+    return { open: byT(p, { plain: `I think I'm actually good at ${SK[b][1].toLowerCase()} now. Like, good. When did that happen?`, proud: `Have you seen my ${SK[b][1].toLowerCase()} lately? Because I have, and it's excellent.`, warm: `I taught ${pick(S.people.filter(q => q !== p).map(fn)) || 'someone'} a little ${SK[b][1].toLowerCase()} yesterday. It felt nice to be useful like that.`, wry: `I've gotten so good at ${SK[b][1].toLowerCase()} that I'm worried what happens to me when the world's normal again.` }),
+      o: [['Ask them to teach someone', { t: 5, m: 6, do: p2 => { remSay(p2, 'gr' + b, 1); const q = pick(S.people.filter(x => x !== p2)); if (q) train(q, b, .8); }, reply: 'Yeah? Okay. I\'ll pick someone who\'ll actually listen.' }], ['Tell them you noticed', { t: 6, m: 8, do: p2 => remSay(p2, 'gr' + b, 1), reply: p2 => byT(p2, { plain: 'You did? …Huh. Thanks.', proud: 'Of course you did.' }) }]] }; } },
+  kit: { w: p => !isArmed(p) && S.people.some(q => q !== p && isArmed(q)) && !said(p, 'kit' + dayNo()) ? 1.6 : 0, mk: p => { const q = S.people.find(x => x !== p && isArmed(x));
+    return { open: byT(p, { plain: `${fn(q)} has a ${GEAR[q.gear].n.toLowerCase()}. I have a stick. I'm not complaining. I'm noting it.`, hot: `So ${fn(q)} gets a ${GEAR[q.gear].n.toLowerCase()} and I get to throw rocks?`, warm: 'I feel safer when everyone has something. Including me, if there\'s anything left.' }),
+      o: [['Move them to the front of the line', { t: 6, do: p2 => { p2.kitFirst = true; gearTick(); remSay(p2, 'kit' + dayNo(), 1); }, reply: 'Thank you. Really.' }], ['Have them help strip houses for parts', { t: 2, train: 'scav', do: p2 => remSay(p2, 'kit' + dayNo(), 1), reply: 'Fine. I\'ll find my own.' }], ['"Guards come first."', { t: -3, do: p2 => remSay(p2, 'kit' + dayNo(), 1), reply: p2 => byT(p2, { plain: 'Yeah. I know.', hot: 'Then make me a guard.' }) }]] }; } },
+  lights: { w: p => (S.subs || []).some(s => s.on && Math.hypot(s.x, s.y) < 400) && isNight() && !said(p, 'lt') ? 1 : 0, mk: p => ({ open: byT(p, { plain: 'Look at the streetlights over there. Someone\'s substation is still running. Feels like the world might come back.', wry: 'Somewhere out there, a power company is still technically doing its job. I respect that.', warm: 'I like watching the lights over there. I pretend there are people under every one.' }),
+    o: [['"We could keep it running."', { t: 4, m: 4, do: p2 => remSay(p2, 'lt', 1), reply: 'Could we? I\'d like that. I\'d really like that.' }], ['"It\'ll fail. Everything does."', { t: -2, m: -4, do: p2 => remSay(p2, 'lt', 1), reply: 'Yeah. Probably. Thanks for that.' }]] }) },
+  past: { w: p => .5, mk: p => { const s = psyche(p); return { open: voice(p, pick([...(STORIES[p.bio] || []), `Before all this I was a ${p.bio}. I still dream I'm late for a shift.`])),
+    o: [['Ask what they miss most', { t: 4, m: 6, reply: p2 => `${s.lost ? cap1(s.lost) + '.' : 'Small things.'} I miss ${s.lost || 'how loud everything was'}. Stupid, right?` }], ['Tell them something about yours', { t: 6, m: 5, reply: 'Huh. I didn\'t know that about you. Thanks for telling me.' }], ['"That life is gone."', { t: -4, m: -6, reply: p2 => byT(p2, { plain: 'I know it is. I didn\'t need reminding.', hot: 'Wow. Okay.' }) }]] }; } },
+};
+LATER.jobPromise = (p, q) => {};
+laterTick = (o => () => { const L = S.later || []; for (const q of L) if (q.k === 'jobPromise' && q.at <= S.t) { const p = S.people.find(x => x.id === q.id); if (p) { if (p.role === q.job) { addTrust(p, 6); feed('🤝', `${fn(p)}: "You kept your word about the job."`); } else { addTrust(p, -12); moodlet(p, 'You promised me that job', -12, 900); remember(p, 'You promised me a job and didn\'t follow through'); feed('💢', `${fn(p)} hasn't forgotten the job you promised`); } } q.k = 'done'; } o(); })(laterTick);
+function topicPick(p) { const E = Object.entries(TTOP).map(([k, T]) => { try { return [k, T.w(p)]; } catch (e) { return [k, 0]; } }).filter(([, w]) => w > 0); if (!E.length) return null; let tot = E.reduce((a, [, w]) => a + w, 0), x = Math.random() * tot; for (const [k, w] of E) { x -= w; if (x <= 0) return k; } return E[0][0]; }
+function topicStart(p, k) { let T; try { T = TTOP[k].mk(p); } catch (e) { console.error(e); return false; }
+  if (k === 'lastnight') remSay(p, 'ln' + dayNo(), 1);
+  TREES._t = { w: () => 0, a: [[T.open], T.o.map(([l, f]) => [l, null, f])] }; (p.trees ||= {})._t = 0; ensureLife(p); psyche(p).talks++; DLG = { kind: 'tree', p, k: '_t', n: 'a', hist: [], say: voice(p, T.open) }; preSpeed = speed || 1; speed = 0; treeRender(); return true; }
+// a reply written for the answer, instead of a generic one
+window.treeAct = (o => i => { if (i >= 0 && DLG && DLG.kind === 'tree') { const T = TREES[DLG.k][DLG.n], opt = T[1][i], f = opt && opt[2]; if (f && f.reply && !opt[1]) { const p = DLG.p; apply(p, f); DLG.hist.push(`<b>You:</b> ${opt[0]}`); p.need.social = Math.min(100, p.need.social + 8); DLG.say = voice(p, typeof f.reply === 'function' ? f.reply(p) : f.reply); DLG.done = true; markSaid(DLG.say); return treeRender(); } } o(i); })(window.treeAct);
+treeRender = (o => () => { o(); const opts = q$('#dlg .dopts'); if (!opts || !DLG || DLG.done) return; const T = TREES[DLG.k] && TREES[DLG.k][DLG.n]; if (!T) return; opts.querySelectorAll('button').forEach((b, i) => { const f = T[1][i] && T[1][i][2]; if (!f) return; const tags = []; if (f.t >= 5) tags.push('they\'ll appreciate it'); else if (f.t <= -4) tags.push('they won\'t like it'); if (f.mem || f.later || f.cb || (f.do && /remSay|later/.test(String(f.do)))) tags.push('remembered'); if (f.pay) tags.push('costs ' + fmtCost(f.pay)); if (tags.length && !b.querySelector('small')) b.querySelector('span:last-child').insertAdjacentHTML('beforeend', `<small>${tags.join(' · ')}</small>`); }); })(treeRender);
+// what you hear when you walk up: real things first, stories second, idle chatter last
+window.talkTo = (o => id => { const p = S.people.find(q => q.id === id); if (!p || p.cb) return o(id); const k = topicPick(p); if (k && (k !== 'past' || Math.random() < .35)) { closeSheet(); if (topicStart(p, k)) return; } o(id); })(window.talkTo);
+window.bandDo = (o => (id, a) => { const b = (S.bands || []).find(q => q.id === id); o(id, a); if (b) { b.metD = dayNo(); (S.bandLog ||= []).unshift({ id: b.id, how: b.how, boss: b.boss, metD: dayNo() }); S.bandLog.length = Math.min(S.bandLog.length, 6); } })(window.bandDo);
+worldTick = (o => () => { o(); nightLogTick(); })(worldTick);
+renderDiff();
 // ================= radio =================
 function radio(from, msg) {
   sfx('radio');
@@ -7479,14 +7832,14 @@ function tutPos() {
   if (s.wait && s.wait()) { S.tut++; return tutRender(); }
   if (subOf(s) !== $('tut').dataset.sub) return tutRender();
   const el = tgOf(s).el, sp = $('tutspot');
-  if (!el || !el.getBoundingClientRect().width) { sp.classList.add('hide'); $('tut').style.top = ''; $('tut').style.bottom = ''; return; }
+  if (!el || !el.getBoundingClientRect().width) { sp.classList.add('hide'); const up = buildMode || sheetOpen(), key = up ? 'up' : 'def'; if ($('tut').dataset.low !== key) { $('tut').dataset.low = key; $('tut').style.top = up ? 'calc(env(safe-area-inset-top) + 130px)' : ''; $('tut').style.bottom = up ? 'auto' : ''; } return; }
   // targets inside a panel may be scrolled out of sight: bring them into view
   if (el.closest('#sheet')) { const sr = $('sheet').getBoundingClientRect(), r0 = el.getBoundingClientRect(); if (r0.top < sr.top + 56 || r0.bottom > sr.bottom - 8) el.scrollIntoView({ block: 'center' }); }
   const r = el.getBoundingClientRect(), pad = 6;
   sp.classList.remove('hide');
   const box = [r.left - pad, r.top - pad, r.width + pad * 2, r.height + pad * 2].map(Math.round), bk = box.join(); if (sp.dataset.box !== bk) { sp.dataset.box = bk; Object.assign(sp.style, { left: box[0] + 'px', top: box[1] + 'px', width: box[2] + 'px', height: box[3] + 'px' }); }
   sp.classList.toggle('below', r.top < 120);
-  const lower = r.top + r.height / 2 > innerHeight * .5;
+  const lower = r.top + r.height / 2 > innerHeight * .5 || !!buildMode;
   if ($('tut').dataset.low !== String(lower)) { $('tut').dataset.low = lower; $('tut').style.top = lower ? `calc(env(safe-area-inset-top) + 130px)` : 'auto'; $('tut').style.bottom = lower ? 'auto' : `calc(env(safe-area-inset-bottom) + 100px)`; }
 }
 function tutCheck() { tutPos(); }
